@@ -52,6 +52,40 @@ El proyecto está diseñado para ser compilado utilizando **PlatformIO**.
 
 ---
 
+## 📦 Instalación desde un Release (Sin compilar)
+
+Si no quieres instalar PlatformIO ni compilar el código, puedes instalar directamente la última versión precompilada desde la sección de **Releases** en GitHub.
+
+### 1. La primera vez (Instalación desde cero por USB)
+Al ser la primera vez, el ESP32-S3 está "vacío" o tiene otro firmware, por lo que es necesario grabar tanto el programa como el gestor de arranque y la tabla de particiones.
+La forma más sencilla es usar **[ESP Web Tools](https://espressif.github.io/esptool-js/)** (flasheo directo desde navegadores web como Chrome/Edge) o **[Espressif Flash Download Tools](https://www.espressif.com/en/support/download/other-tools)** (Windows).
+
+Los archivos binarios descargados del Release deben colocarse en las siguientes direcciones de memoria (*offsets*):
+* `0x0000` -> `bootloader.bin`
+* `0x8000` -> `partitions.bin`
+* `0x10000` -> `firmware.bin`
+
+**Comando manual usando esptool (para usuarios avanzados):**
+```bash
+esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
+```
+
+### 2. Actualizaciones posteriores (OTA o Cable)
+Para futuras versiones, la tabla de particiones y el bootloader ya estarán instalados. **Solo hace falta actualizar el archivo `firmware.bin`**.
+
+**Opción A: Vía OTA (Web/WiFi - Recomendado)**
+1. Accede a la ruta `/update` usando la dirección IP de tu Radar en el navegador (ej. `http://192.168.X.X/update`).
+2. Selecciona el nuevo archivo **`firmware.bin`** descargado del Release.
+3. Pulsa en actualizar. El dispositivo se reiniciará con la nueva versión sin necesidad de cables.
+
+**Opción B: Por cable USB**
+Si por algún motivo necesitas actualizar por cable, graba únicamente el firmware en `0x10000`:
+```bash
+esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x10000 firmware.bin
+```
+
+---
+
 ## ⚙️ Configuración (Primer Uso)
 
 1. Al iniciar por primera vez (o si no puede conectarse a un WiFi conocido), la pantalla mostrará un mensaje indicando el **MODO CONFIGURACIÓN**.
