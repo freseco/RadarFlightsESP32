@@ -1,4 +1,5 @@
 #include "display.h"
+#include "world_map.h"
 
 void animateZoom(bool zoomIn) {
   uint16_t radarColor = spr.color565(0, 180, 0);
@@ -67,6 +68,8 @@ void drawSplashScreen(String wifiStatus, uint16_t wifiColor) {
 
 void drawRadarUI() {
   spr.fillSprite(TFT_BLACK);
+  spr.setTextSize(1);
+  spr.setTextFont(1);
   
   uint16_t radarColor = spr.color565(0, 180, 0);
   spr.drawCircle(centerX, centerY, radarRadius, radarColor);
@@ -93,10 +96,19 @@ void drawRadarUI() {
   
   spr.setTextDatum(BC_DATUM);
   
+  std::vector<Airplane> localPlanes;
+  if (dataMutex != NULL) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    localPlanes = planes;
+    xSemaphoreGive(dataMutex);
+  } else {
+    localPlanes = planes;
+  }
+
   // Contar cuántos vamos a dibujar para poner el texto exacto
   int count = 0;
-  for (int i = 0; i < planes.size(); i++) {
-    if (planes[i].distanceKm <= pref_rad) count++;
+  for (int i = 0; i < localPlanes.size(); i++) {
+    if (localPlanes[i].distanceKm <= pref_rad) count++;
   }
   if (count > pref_max_planes) count = pref_max_planes;
   
@@ -882,19 +894,41 @@ void drawGhostPlane() {
 
 void drawArtificialHorizon() {
   spr.fillSprite(TFT_BLACK);
+  std::vector<Airplane> localPlanes;
+  if (dataMutex != NULL) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    localPlanes = planes;
+    xSemaphoreGive(dataMutex);
+  } else {
+    localPlanes = planes;
+  }
+
   float minDist = 999999;
   Airplane* target = nullptr;
-  for (int i=0; i<planes.size(); i++) {
-    if (planes[i].distanceKm < minDist) {
-      minDist = planes[i].distanceKm;
-      target = &planes[i];
+  for (int i=0; i<localPlanes.size(); i++) {
+    if (localPlanes[i].distanceKm < minDist) {
+      minDist = localPlanes[i].distanceKm;
+      target = &localPlanes[i];
     }
   }
 
-  spr.fillRect(0, 0, 240, 120, spr.color565(50, 150, 255)); // Sky
-  spr.fillRect(0, 120, 240, 120, spr.color565(139, 69, 19)); // Ground
-  spr.drawLine(0, 120, 240, 120, TFT_WHITE);
+  // Fake pitch and roll animation to make it look alive
+  float roll = sin(millis() / 1500.0) * 15.0 * M_PI / 180.0; // +/- 15 degrees
+  int pitchOffset = sin(millis() / 800.0) * 15; // +/- 15 pixels
+
+  spr.fillSprite(spr.color565(50, 150, 255)); // Sky background
   
+  // Calculate ground polygon based on roll and pitch
+  int yL = centerY + pitchOffset + sin(roll) * 120;
+  int yR = centerY + pitchOffset - sin(roll) * 120;
+  
+  // Ground
+  spr.fillTriangle(0, yL, 240, yR, 0, 240, spr.color565(139, 69, 19));
+  spr.fillTriangle(240, yR, 0, 240, 240, 240, spr.color565(139, 69, 19));
+  // Horizon Line
+  spr.drawLine(0, yL, 240, yR, TFT_WHITE);
+  
+  // Center Crosshair
   spr.drawLine(centerX - 40, centerY, centerX - 10, centerY, TFT_GREEN);
   spr.drawLine(centerX + 10, centerY, centerX + 40, centerY, TFT_GREEN);
   spr.drawLine(centerX - 40, centerY, centerX - 40, centerY + 10, TFT_GREEN);
@@ -904,19 +938,42 @@ void drawArtificialHorizon() {
   spr.setTextDatum(MC_DATUM);
 
   if (target != nullptr) {
-    spr.setTextSize(2);
-    
     String altStr = "";
-    if (pref_units == "ft") altStr = String((int)(target->altitude * 3.28084));
-    else altStr = String((int)target->altitude);
+    String altLabel = "";
+    if (pref_units == "ft") {
+      altStr = String((int)(target->altitude * 3.28084));
+      altLabel = "ALT (FT)";
+    } else {
+      altStr = String((int)target->altitude);
+      altLabel = "ALT (M)";
+    }
+    
+    // Altitude
+    spr.setTextSize(1);
+    spr.setTextColor(TFT_WHITE, spr.color565(50, 150, 255));
+    spr.drawString(altLabel, 40, centerY - 30);
+    spr.setTextSize(2);
     spr.setTextColor(TFT_GREEN, spr.color565(50, 150, 255));
-    spr.drawString(altStr, 40, centerY - 20);
+    spr.drawString(altStr, 40, centerY - 15);
     
+    // Speed
     String spdStr = String((int)target->velocity);
-    spr.drawString(spdStr, 200, centerY - 20);
+    spr.setTextSize(1);
+    spr.setTextColor(TFT_WHITE, spr.color565(50, 150, 255));
+    spr.drawString("SPD (KM/H)", 200, centerY - 30);
+    spr.setTextSize(2);
+    spr.setTextColor(TFT_GREEN, spr.color565(50, 150, 255));
+    spr.drawString(spdStr, 200, centerY - 15);
     
-    spr.drawString(String((int)target->heading), centerX, 20);
+    // Heading
+    spr.setTextSize(1);
+    spr.setTextColor(TFT_WHITE, spr.color565(50, 150, 255));
+    spr.drawString("HDG", centerX, 10);
+    spr.setTextSize(2);
+    spr.setTextColor(TFT_GREEN, spr.color565(50, 150, 255));
+    spr.drawString(String((int)target->heading), centerX, 25);
     
+    // Callsign
     spr.setTextSize(2);
     spr.setTextColor(TFT_GREEN, spr.color565(139, 69, 19));
     spr.drawString(target->callsign, centerX, 200);
@@ -925,48 +982,10 @@ void drawArtificialHorizon() {
     spr.setTextColor(TFT_GREEN, spr.color565(139, 69, 19));
     spr.drawString("NO TARGET", centerX, 200);
   }
+  
+  spr.pushSprite(0, 0);
 }
 
-void drawTargetLock() {
-  spr.fillSprite(TFT_BLACK);
-  
-  spr.drawCircle(centerX, centerY, 80, TFT_RED);
-  spr.drawCircle(centerX, centerY, 78, TFT_RED);
-  spr.drawLine(centerX, centerY - 100, centerX, centerY - 60, TFT_RED);
-  spr.drawLine(centerX, centerY + 60, centerX, centerY + 100, TFT_RED);
-  spr.drawLine(centerX - 100, centerY, centerX - 60, centerY, TFT_RED);
-  spr.drawLine(centerX + 60, centerY, centerX + 100, centerY, TFT_RED);
-  
-  float minDist = 999999;
-  Airplane* target = nullptr;
-  for (int i=0; i<planes.size(); i++) {
-    if (planes[i].distanceKm < minDist) {
-      minDist = planes[i].distanceKm;
-      target = &planes[i];
-    }
-  }
-
-  spr.setTextDatum(MC_DATUM);
-  if (target != nullptr) {
-    spr.setTextColor(TFT_WHITE);
-    spr.setTextSize(3);
-    spr.drawString(target->callsign, centerX, centerY - 20);
-    
-    spr.setTextSize(2);
-    spr.setTextColor(TFT_YELLOW);
-    spr.drawString(String(target->distanceKm, 1) + " KM", centerX, centerY + 20);
-    
-    String altStr = "";
-    if (pref_units == "ft") altStr = String((int)(target->altitude * 3.28084)) + " FT";
-    else altStr = String((int)target->altitude) + " M";
-    spr.setTextColor(TFT_CYAN);
-    spr.drawString(altStr, centerX, centerY + 50);
-  } else {
-    spr.setTextColor(TFT_RED);
-    spr.setTextSize(2);
-    spr.drawString("SEARCHING...", centerX, centerY);
-  }
-}
 
 void drawISS() {
   spr.fillSprite(TFT_BLACK);
@@ -976,18 +995,26 @@ void drawISS() {
   spr.setTextSize(2);
   spr.drawString("ISS TRACKER", centerX, 30);
   
-  spr.drawCircle(centerX, centerY, 70, spr.color565(0, 50, 100));
-  spr.drawLine(centerX - 70, centerY, centerX + 70, centerY, spr.color565(50, 50, 50));
-  spr.drawLine(centerX, centerY - 70, centerX, centerY + 70, spr.color565(50, 50, 50));
+  int mapX = centerX - (WORLD_MAP_WIDTH / 2);
+  int mapY = centerY - (WORLD_MAP_HEIGHT / 2);
   
-  float hX = centerX + (pref_lon * (70.0/180.0));
-  float hY = centerY - (pref_lat * (70.0/90.0));
+  // Draw the world map
+  spr.drawBitmap(mapX, mapY, world_map_bitmap, WORLD_MAP_WIDTH, WORLD_MAP_HEIGHT, spr.color565(0, 100, 0));
+  
+  // Draw user's location (Home)
+  float hX = mapX + ((pref_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH;
+  float hY = mapY + ((90.0 - pref_lat) / 180.0) * WORLD_MAP_HEIGHT;
   spr.fillCircle(hX, hY, 3, TFT_GREEN);
   
-  float iX = centerX + (iss_lon * (70.0/180.0));
-  float iY = centerY - (iss_lat * (70.0/90.0));
+  // Draw ISS location
+  float iX = mapX + ((iss_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH;
+  float iY = mapY + ((90.0 - iss_lat) / 180.0) * WORLD_MAP_HEIGHT;
   spr.fillCircle(iX, iY, 4, TFT_RED);
   spr.drawCircle(iX, iY, 8, TFT_RED);
+  
+  // Draw crosshair centered on ISS
+  spr.drawLine(iX - 12, iY, iX + 12, iY, TFT_RED);
+  spr.drawLine(iX, iY - 12, iX, iY + 12, TFT_RED);
   
   float dy = iss_lat - pref_lat;
   float dx = iss_lon - pref_lon;
@@ -996,6 +1023,8 @@ void drawISS() {
   spr.setTextSize(2);
   spr.setTextColor(TFT_YELLOW);
   spr.drawString(String((int)dist) + " KM", centerX, 210);
+  
+  spr.pushSprite(0, 0);
 }
 
 void drawSunArc(struct tm* timeinfo) {
@@ -1030,4 +1059,6 @@ void drawSunArc(struct tm* timeinfo) {
   } else {
     spr.fillCircle(sx, sy, 5, TFT_DARKGREY);
   }
+  
+  spr.pushSprite(0, 0);
 }

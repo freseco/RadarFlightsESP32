@@ -13,7 +13,6 @@ void drawAnalogTimeUI(struct tm* timeinfo);
 void drawAnalog24hTimeUI(struct tm* timeinfo);
 void drawMoonUI(struct tm* timeinfo);
 void drawArtificialHorizon();
-void drawTargetLock();
 void drawISS();
 void drawSunArc(struct tm* timeinfo);
 void drawWeatherUI(struct tm* timeinfo);

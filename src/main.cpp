@@ -111,11 +111,11 @@ void setup() {
   pref_show_weather = preferences.getBool("sh_wea", true);
   pref_show_moon = preferences.getBool("sh_moon", true);
   pref_show_horizon = preferences.getBool("sh_horiz", true);
-  pref_show_target = preferences.getBool("sh_target", true);
   pref_show_iss = preferences.getBool("sh_iss", true);
   pref_show_sun = preferences.getBool("sh_sun", true);
   
   pref_screen_time_s = preferences.getInt("screen_time", 30);
+  pref_radar_time_s = preferences.getInt("radar_time", 30);
 
   configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
 
@@ -220,6 +220,11 @@ void setup() {
     &networkTaskHandle,
     0 // Core 0
   );
+  
+  if (!pref_show_radar) {
+    currentState = (DisplayState)(STATE_MAX - 1);
+    nextState();
+  }
 }
 
 void nextState() {
@@ -233,7 +238,6 @@ void nextState() {
     else if (currentState == STATE_WEATHER && pref_show_weather) enabled = true;
     else if (currentState == STATE_MOON && pref_show_moon) enabled = true;
     else if (currentState == STATE_HORIZON && pref_show_horizon) enabled = true;
-    else if (currentState == STATE_TARGET && pref_show_target) enabled = true;
     else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
     else if (currentState == STATE_SUN && pref_show_sun) enabled = true;
     
@@ -305,22 +309,22 @@ void loop() {
   }
   
   // State Machine Logic
-  struct tm timeinfo;
+  struct tm timeinfo = {0};
   bool timeValid = getLocalTime(&timeinfo, 10);
   
-  if (timeValid) {
-    if (currentState == STATE_RADAR) {
-      if (timeinfo.tm_min % 5 == 0 && timeinfo.tm_sec == 0) {
-        nextState();
-        stateStartTime = now;
-        spr.fillSprite(TFT_BLACK);
-      }
-    } else {
-      if (now - stateStartTime >= (pref_screen_time_s * 1000UL)) {
-        nextState();
-        stateStartTime = now;
-        spr.fillSprite(TFT_BLACK);
-      }
+  if (currentState == STATE_RADAR) {
+    if (now - stateStartTime >= (pref_radar_time_s * 1000UL)) {
+      nextState();
+      stateStartTime = now;
+      spr.fillSprite(TFT_BLACK);
+      lastDrawTime = 0;
+    }
+  } else {
+    if (now - stateStartTime >= (pref_screen_time_s * 1000UL)) {
+      nextState();
+      stateStartTime = now;
+      spr.fillSprite(TFT_BLACK);
+      lastDrawTime = 0;
     }
   }
 
@@ -351,12 +355,7 @@ void loop() {
       lastDrawTime = now;
     }
     return;
-  } else if (currentState == STATE_TARGET) {
-    if (now - lastDrawTime > 250) { 
-      drawTargetLock();
-      lastDrawTime = now;
-    }
-    return;
+
   } else if (currentState == STATE_ISS) {
     if (now - lastDrawTime > 1000) { 
       drawISS();

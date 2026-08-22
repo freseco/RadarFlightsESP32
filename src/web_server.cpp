@@ -142,12 +142,13 @@ const char* htmlForm = R"=====(
         <div class="chk-container"><input type='checkbox' name='sh_wea' value='1' %CHK_WEA%> Tiempo (AEMET)</div>
         <div class="chk-container"><input type='checkbox' name='sh_moon' value='1' %CHK_MOON%> Fase Lunar</div>
         <div class="chk-container"><input type='checkbox' name='sh_horiz' value='1' %CHK_HORIZ%> Horizonte Artificial</div>
-        <div class="chk-container"><input type='checkbox' name='sh_target' value='1' %CHK_TARGET%> Target Lock</div>
         <div class="chk-container"><input type='checkbox' name='sh_iss' value='1' %CHK_ISS%> ISS Tracker</div>
         <div class="chk-container"><input type='checkbox' name='sh_sun' value='1' %CHK_SUN%> Arco Solar</div>
       </div>
       <label>⏳ Tiempo de cada pantalla (segundos):</label>
       <input type='number' name='screen_time' value='%SCREEN_TIME%'>
+      <label>⏳ Tiempo en radar (segundos):</label>
+      <input type='number' name='radar_time' value='%RADAR_TIME%'>
       <label>✈️ Máx. Aviones Visibles:</label>
       <input type='number' name='maxp' value='%MAXP%'>
       <label>🎨 Color de los Aviones:</label>
@@ -198,7 +199,7 @@ const char* htmlForm = R"=====(
         o_ssel: "-- Selecciona una estación representativa --", l_idema: "📍 ID de Estación (Manual o auto por GPS):",
         s_time: "🕒 Hora y Fecha", l_utc: "🕒 Zona Horaria (Horas desde UTC):", l_dst: "☀️ Horario de Verano (+1h):", o_d1: "Activado", o_d0: "Desactivado",
         l_clock: "⌚ Modo de Reloj:", o_c0: "Ciclar todos", o_c1: "Solo Digital", o_c2: "Solo Analógico 12h", o_c3: "Solo Analógico 24h",
-        s_vis: "⚙️ Ajustes Visuales", l_maxp: "✈️ Máx. Aviones Visibles:", l_col: "🎨 Color de los Aviones:",
+        s_vis: "⚙️ Ajustes Visuales", l_scr_time: "⏳ Tiempo de cada pantalla (segundos):", l_rad_time: "⏳ Tiempo en radar (segundos):", l_maxp: "✈️ Máx. Aviones Visibles:", l_col: "🎨 Color de los Aviones:",
         o_r: "Rojo", o_b: "Azul", o_o: "Naranja", l_uni: "📏 Sistema de Medida (Altitud):", o_um: "Métrico (m)", o_uft: "Imperial (ft)",
         l_gho: "👻 Avión Fantasma (minutos, 0=Apagado):", l_spd: "💨 Velocidad del Avión (px/s):", l_trl: "🌠 Longitud de la estela (puntos):",
         s_stat: "📊 Estado y Estadísticas", btn_save: "💾 Guardar y Reiniciar", a_ota: "🔄 Actualizar Firmware (OTA)", a_map: "🌍 Ver Mapa Global en Airplanes.live"
@@ -213,7 +214,7 @@ const char* htmlForm = R"=====(
         o_ssel: "-- Select a representative station --", l_idema: "📍 Station ID (Manual or auto by GPS):",
         s_time: "🕒 Time and Date", l_utc: "🕒 Timezone (Hours from UTC):", l_dst: "☀️ Daylight Saving Time (+1h):", o_d1: "Enabled", o_d0: "Disabled",
         l_clock: "⌚ Clock Mode:", o_c0: "Cycle all", o_c1: "Digital Only", o_c2: "Analog 12h Only", o_c3: "Analog 24h Only",
-        s_vis: "⚙️ Visual Settings", l_maxp: "✈️ Max Visible Planes:", l_col: "🎨 Planes Color:",
+        s_vis: "⚙️ Visual Settings", l_scr_time: "⏳ Screen Time (seconds):", l_rad_time: "⏳ Radar Time (seconds):", l_maxp: "✈️ Max Visible Planes:", l_col: "🎨 Planes Color:",
         o_r: "Red", o_b: "Blue", o_o: "Orange", l_uni: "📏 Measurement System (Altitude):", o_um: "Metric (m)", o_uft: "Imperial (ft)",
         l_gho: "👻 Ghost Plane (minutes, 0=Off):", l_spd: "💨 Plane Speed (px/s):", l_trl: "🌠 Trail Length (points):",
         s_stat: "📊 Status and Statistics", btn_save: "💾 Save and Reboot", a_ota: "🔄 Update Firmware (OTA)", a_map: "🌍 View Global Map on Airplanes.live"
@@ -251,6 +252,8 @@ const char* htmlForm = R"=====(
       setLabelByInputName('utc_offset', d.l_utc);
       setLabelByInputName('dst', d.l_dst);
       setLabelByInputName('clock_mode', d.l_clock);
+      setLabelByInputName('screen_time', d.l_scr_time);
+      setLabelByInputName('radar_time', d.l_rad_time);
       setLabelByInputName('maxp', d.l_maxp);
       setLabelByInputName('color', d.l_col);
       setLabelByInputName('units', d.l_uni);
@@ -487,11 +490,11 @@ void handleRoot() {
   html.replace("%CHK_WEA%", pref_show_weather ? "checked" : "");
   html.replace("%CHK_MOON%", pref_show_moon ? "checked" : "");
   html.replace("%CHK_HORIZ%", pref_show_horizon ? "checked" : "");
-  html.replace("%CHK_TARGET%", pref_show_target ? "checked" : "");
   html.replace("%CHK_ISS%", pref_show_iss ? "checked" : "");
   html.replace("%CHK_SUN%", pref_show_sun ? "checked" : "");
   
   html.replace("%SCREEN_TIME%", String(pref_screen_time_s));
+  html.replace("%RADAR_TIME%", String(pref_radar_time_s));
   
   html.replace("%CPU_TEMP%", String((int)temperatureRead()));
   html.replace("%AEMET_TEMP%", currentWeather.valid ? String(currentWeather.ta, 1) : "N/D");
@@ -557,7 +560,6 @@ void handleSave() {
   pref_show_weather = server.hasArg("sh_wea");
   pref_show_moon = server.hasArg("sh_moon");
   pref_show_horizon = server.hasArg("sh_horiz");
-  pref_show_target = server.hasArg("sh_target");
   pref_show_iss = server.hasArg("sh_iss");
   pref_show_sun = server.hasArg("sh_sun");
   
@@ -566,13 +568,16 @@ void handleSave() {
   preferences.putBool("sh_wea", pref_show_weather);
   preferences.putBool("sh_moon", pref_show_moon);
   preferences.putBool("sh_horiz", pref_show_horizon);
-  preferences.putBool("sh_target", pref_show_target);
   preferences.putBool("sh_iss", pref_show_iss);
   preferences.putBool("sh_sun", pref_show_sun);
   
   if (server.hasArg("screen_time")) {
     preferences.putInt("screen_time", server.arg("screen_time").toInt());
     pref_screen_time_s = server.arg("screen_time").toInt();
+  }
+  if (server.hasArg("radar_time")) {
+    preferences.putInt("radar_time", server.arg("radar_time").toInt());
+    pref_radar_time_s = server.arg("radar_time").toInt();
   }
   
   if (server.hasArg("lang")) {
@@ -611,6 +616,24 @@ void handleSave() {
     configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
   }
   airportShownInitially = false;
+
+  bool currentEnabled = false;
+  if (currentState == STATE_RADAR && pref_show_radar) currentEnabled = true;
+  else if (currentState == STATE_TIME && pref_show_time) currentEnabled = true;
+  else if (currentState == STATE_WEATHER && pref_show_weather) currentEnabled = true;
+  else if (currentState == STATE_MOON && pref_show_moon) currentEnabled = true;
+  else if (currentState == STATE_HORIZON && pref_show_horizon) currentEnabled = true;
+  else if (currentState == STATE_ISS && pref_show_iss) currentEnabled = true;
+  else if (currentState == STATE_SUN && pref_show_sun) currentEnabled = true;
+  
+  if (!currentEnabled) {
+    int prev = (int)currentState - 1;
+    if (prev < 0) prev = STATE_MAX - 1;
+    currentState = (DisplayState)prev;
+    nextState();
+    stateStartTime = millis();
+    spr.fillSprite(TFT_BLACK);
+  }
 
   // Forzar redibujado y búsqueda limpia inmediata
   planes.clear();

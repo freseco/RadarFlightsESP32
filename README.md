@@ -23,6 +23,9 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
     - Analógico 24 Horas (con borde iluminado en las horas de sol y aguja de 24h).
   - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de AEMET (requiere API Key gratuita). Cuenta con una brújula con puntos cardinales alineados para indicar la dirección exacta del viento.
   - 🌑 **Fase Lunar**: Indicador de la fase lunar actual.
+  - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
+  - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación.
+  - ☀️ **Arco Solar**: Representación gráfica de la posición del Sol durante el día con las horas de salida y puesta.
 * **Portal Cautivo de Configuración**: No hay que modificar el código para cambiar las credenciales de WiFi o la ubicación. Si no detecta WiFi, levanta su propio punto de acceso (Access Point) llamado `ESP32-Radar` para configuración remota desde el móvil o navegador.
 * **Auto-Localización**: Capacidad de ubicarte automáticamente según tu dirección IP para ajustar el radar.
 
@@ -110,6 +113,9 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
 3. **El Tiempo (AEMET)**: Pantalla de información meteorológica con la temperatura actual, humedad, y viento extraída directamente de AEMET.
 4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual, iluminada acorde a los días del ciclo lunar.
+5. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
+6. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa de los continentes, indicando la distancia exacta hasta tu casa.
+7. **Arco Solar**: Arco que dibuja la posición del sol a lo largo del día.
 
 ---
 
