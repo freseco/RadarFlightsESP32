@@ -37,6 +37,7 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
 
 * Un microcontrolador **ESP32-S3** (aunque puede portarse a otros ESP32 modificando el entorno en `platformio.ini`).
 * Pantalla TFT compatible con la librería `TFT_eSPI` (ej. GC9A01 redonda o similares).
+* **Carcasa 3D**: El diseño de la carcasa impreso en 3D que aparece en las imágenes se puede descargar gratuitamente en Printables: [Flight Radar (No soldering)](https://www.printables.com/model/1771315-flight-radar-no-soldering)
 
 ---
 
