@@ -5,12 +5,7 @@
   <img src="images/2.jpg" width="30%" />
   <img src="images/3.jpg" width="30%" />
   <br><br>
-  <!-- GitHub no soporta la etiqueta <video> directamente, así que usamos un enlace con una imagen en su lugar -->
-  <a href="https://github.com/freseco/RadarFlightsESP32/raw/main/images/4.mp4">
-    <img src="images/1.jpg" width="30%" alt="Haz clic para ver el vídeo de demostración" style="border: 2px solid #555; border-radius: 10px;" />
-    <br>
-    <b style="font-size: 1.2em;">🎬 Ver demostración en vídeo ▶️</b>
-  </a>
+  <img src="images/animacion.gif" width="60%" alt="Demostración animada" style="border: 2px solid #555; border-radius: 10px;" />
 </div>
 
 RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** (específicamente la placa `esp32-s3-devkitm-1` con soporte para pantalla LCD `TFT_eSPI`) que actúa como un radar de vuelos de escritorio. Muestra información en tiempo real sobre los aviones cercanos usando datos públicos de [Airplanes.live](https://airplanes.live/), además de proveer pantallas de información del tiempo (vía AEMET), reloj (digital y analógico) y fase lunar.
