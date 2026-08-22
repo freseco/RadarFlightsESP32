@@ -12,6 +12,8 @@ int pref_max_planes = 15;
 String pref_color = "orange"; 
 bool pref_geoip = false;
 String pref_airport_id = "MAD";
+String pref_lang = "es";
+String pref_units = "m";
 long pref_offset = 7200; // default 2h (CEST)
 bool pref_dst = false;
 int pref_ghost_mins = 10;
@@ -19,6 +21,10 @@ int pref_ghost_speed = 150;
 int pref_ghost_trail = 100;
 int pref_clock_mode = 0; // 0=Cycle, 1=Digital, 2=Analog12h, 3=Analog24h
 
+String tr(const String& es, const String& en) {
+  if (pref_lang == "en") return en;
+  return es;
+}
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft); 

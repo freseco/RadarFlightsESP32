@@ -30,6 +30,10 @@ const char* htmlForm = R"=====(
   <h2>⚙️ Ajustes del Radar</h2>
   <p class="sub">Configura tu dispositivo</p>
   <form action='/save' method='POST'>
+    <select id='langSelect' name='lang' onchange='changeLang(this.value)' style='margin-bottom: 20px;'>
+      <option value='es' %LANG_ES%>🇪🇸 Español</option>
+      <option value='en' %LANG_EN%>🇬🇧 English</option>
+    </select>
     <details>
       <summary>📶 Conexión WiFi</summary>
       <label>🌐 Red WiFi (Nombre):</label>
@@ -136,6 +140,11 @@ const char* htmlForm = R"=====(
         <option value='blue' %C_BLU%>Azul</option>
         <option value='orange' %C_ORA%>Naranja</option>
       </select>
+      <label>📏 Sistema de Medida (Altitud):</label>
+      <select name='units'>
+        <option value='m' %U_M%>Métrico (m)</option>
+        <option value='ft' %U_FT%>Imperial (ft)</option>
+      </select>
       <label>👻 Avión Fantasma (minutos, 0=Apagado):</label>
       <input type='number' name='ghost' value='%GHOST_MINS%'>
       <label>💨 Velocidad del Avión (px/s):</label>
@@ -162,6 +171,110 @@ const char* htmlForm = R"=====(
   </div>
 
   <script>
+    const i18nDict = {
+      "es": {
+        title: "⚙️ Ajustes del Radar", sub: "Configura tu dispositivo",
+        s_wifi: "📶 Conexión WiFi", l_ssid: "🌐 Red WiFi (Nombre):", l_pass: "🔑 Contraseña WiFi:",
+        s_loc: "🌍 Ubicación y Área", l_geoip: "🌍 Autolocalizar por IP:", o_geo1: "Sí (Ignora manuales)", o_geo0: "No (Usar manuales)",
+        l_airports: "🏢 Aeropuertos Famosos (Auto-relleno):", o_asel: "-- Selecciona un aeropuerto --",
+        l_lat: "📍 Latitud (Manual):", l_lon: "📍 Longitud (Manual):", btn_geo: "🧭 Obtener por Red (IP)", l_rad: "📡 Radio del Radar (km):",
+        s_wea: "🌤️ El Tiempo (AEMET)", l_api: "🔑 API Key de AEMET:", l_sta: "🏢 Estaciones AEMET (Auto-relleno):",
+        o_ssel: "-- Selecciona una estación representativa --", l_idema: "📍 ID de Estación (Manual o auto por GPS):",
+        s_time: "🕒 Hora y Fecha", l_utc: "🕒 Zona Horaria (Horas desde UTC):", l_dst: "☀️ Horario de Verano (+1h):", o_d1: "Activado", o_d0: "Desactivado",
+        l_clock: "⌚ Modo de Reloj:", o_c0: "Ciclar todos", o_c1: "Solo Digital", o_c2: "Solo Analógico 12h", o_c3: "Solo Analógico 24h",
+        s_vis: "⚙️ Ajustes Visuales", l_maxp: "✈️ Máx. Aviones Visibles:", l_col: "🎨 Color de los Aviones:",
+        o_r: "Rojo", o_b: "Azul", o_o: "Naranja", l_uni: "📏 Sistema de Medida (Altitud):", o_um: "Métrico (m)", o_uft: "Imperial (ft)",
+        l_gho: "👻 Avión Fantasma (minutos, 0=Apagado):", l_spd: "💨 Velocidad del Avión (px/s):", l_trl: "🌠 Longitud de la estela (puntos):",
+        s_stat: "📊 Estado y Estadísticas", btn_save: "💾 Guardar y Reiniciar", a_ota: "🔄 Actualizar Firmware (OTA)", a_map: "🌍 Ver Mapa Global en Airplanes.live"
+      },
+      "en": {
+        title: "⚙️ Radar Settings", sub: "Configure your device",
+        s_wifi: "📶 WiFi Connection", l_ssid: "🌐 WiFi Network (Name):", l_pass: "🔑 WiFi Password:",
+        s_loc: "🌍 Location and Area", l_geoip: "🌍 Auto-locate by IP:", o_geo1: "Yes (Ignore manual)", o_geo0: "No (Use manual)",
+        l_airports: "🏢 Famous Airports (Auto-fill):", o_asel: "-- Select an airport --",
+        l_lat: "📍 Latitude (Manual):", l_lon: "📍 Longitude (Manual):", btn_geo: "🧭 Get by Network (IP)", l_rad: "📡 Radar Radius (km):",
+        s_wea: "🌤️ Weather (AEMET)", l_api: "🔑 AEMET API Key:", l_sta: "🏢 AEMET Stations (Auto-fill):",
+        o_ssel: "-- Select a representative station --", l_idema: "📍 Station ID (Manual or auto by GPS):",
+        s_time: "🕒 Time and Date", l_utc: "🕒 Timezone (Hours from UTC):", l_dst: "☀️ Daylight Saving Time (+1h):", o_d1: "Enabled", o_d0: "Disabled",
+        l_clock: "⌚ Clock Mode:", o_c0: "Cycle all", o_c1: "Digital Only", o_c2: "Analog 12h Only", o_c3: "Analog 24h Only",
+        s_vis: "⚙️ Visual Settings", l_maxp: "✈️ Max Visible Planes:", l_col: "🎨 Planes Color:",
+        o_r: "Red", o_b: "Blue", o_o: "Orange", l_uni: "📏 Measurement System (Altitude):", o_um: "Metric (m)", o_uft: "Imperial (ft)",
+        l_gho: "👻 Ghost Plane (minutes, 0=Off):", l_spd: "💨 Plane Speed (px/s):", l_trl: "🌠 Trail Length (points):",
+        s_stat: "📊 Status and Statistics", btn_save: "💾 Save and Reboot", a_ota: "🔄 Update Firmware (OTA)", a_map: "🌍 View Global Map on Airplanes.live"
+      }
+    };
+    function changeLang(l) {
+      if(!i18nDict[l]) return;
+      const d = i18nDict[l];
+      document.querySelector("h2").innerText = d.title;
+      document.querySelector("p.sub").innerText = d.sub;
+      
+      const sums = document.querySelectorAll("summary");
+      sums[0].innerText = d.s_wifi; sums[1].innerText = d.s_loc; sums[2].innerText = d.s_wea; 
+      sums[3].innerText = d.s_time; sums[4].innerText = d.s_vis; sums[5].innerText = d.s_stat;
+      
+      const txt = (selector, text) => { const el = document.querySelector(selector); if(el) el.innerText = text; };
+      const setLbl = (name, text) => txt(`input[name='${name}']`, text); // Not good since label is before input
+      
+      // Let's select labels by traversing previous element sibling of inputs
+      const setLabelByInputName = (name, text) => {
+         const inp = document.querySelector(`[name='${name}']`);
+         if(inp && inp.previousElementSibling && inp.previousElementSibling.tagName === 'LABEL') {
+           inp.previousElementSibling.innerText = text;
+         }
+      };
+      
+      setLabelByInputName('ssid', d.l_ssid);
+      setLabelByInputName('pass', d.l_pass);
+      setLabelByInputName('geoip', d.l_geoip);
+      setLabelByInputName('lat', d.l_lat);
+      setLabelByInputName('lon', d.l_lon);
+      setLabelByInputName('rad', d.l_rad);
+      setLabelByInputName('aemet_key', d.l_api);
+      setLabelByInputName('aemet_idema', d.l_idema);
+      setLabelByInputName('utc_offset', d.l_utc);
+      setLabelByInputName('dst', d.l_dst);
+      setLabelByInputName('clock_mode', d.l_clock);
+      setLabelByInputName('maxp', d.l_maxp);
+      setLabelByInputName('color', d.l_col);
+      setLabelByInputName('units', d.l_uni);
+      setLabelByInputName('ghost', d.l_gho);
+      setLabelByInputName('ghost_speed', d.l_spd);
+      setLabelByInputName('ghost_trail', d.l_trl);
+      
+      // Selects that don't follow the pattern
+      const airportSel = document.getElementById('airportSelect');
+      if (airportSel && airportSel.previousElementSibling) airportSel.previousElementSibling.innerText = d.l_airports;
+      const stationSel = document.getElementById('stationSelect');
+      if (stationSel && stationSel.previousElementSibling) stationSel.previousElementSibling.innerText = d.l_sta;
+
+      txt("select[name='geoip'] option[value='1']", d.o_geo1);
+      txt("select[name='geoip'] option[value='0']", d.o_geo0);
+      txt("#airportSelect option[value='']", d.o_asel);
+      txt("#stationSelect option[value='']", d.o_ssel);
+      txt("select[name='dst'] option[value='1']", d.o_d1);
+      txt("select[name='dst'] option[value='0']", d.o_d0);
+      txt("select[name='clock_mode'] option[value='0']", d.o_c0);
+      txt("select[name='clock_mode'] option[value='1']", d.o_c1);
+      txt("select[name='clock_mode'] option[value='2']", d.o_c2);
+      txt("select[name='clock_mode'] option[value='3']", d.o_c3);
+      txt("select[name='color'] option[value='red']", d.o_r);
+      txt("select[name='color'] option[value='blue']", d.o_b);
+      txt("select[name='color'] option[value='orange']", d.o_o);
+      txt("select[name='units'] option[value='m']", d.o_um);
+      txt("select[name='units'] option[value='ft']", d.o_uft);
+      
+      txt("#btnGeo", d.btn_geo);
+      txt("button[type='submit']", d.btn_save);
+      
+      const links = document.querySelectorAll("div[style*='text-align: center'] a");
+      if(links.length > 1) {
+        links[0].innerText = d.a_ota; links[1].innerText = d.a_map;
+      }
+    }
+    window.addEventListener("DOMContentLoaded", () => {
+      changeLang(document.getElementById("langSelect").value);
+    });
     document.getElementById('btnGeo').addEventListener('click', function() {
       var btn = this;
       var originalText = btn.innerText;
@@ -240,6 +353,20 @@ const char* otaHtml = R"=====(
   <a href='/' class='back'>⬅️ Volver a Ajustes</a>
   
   <script>
+    const i18nOta = {
+      "es": { title: "🔄 Actualizar Firmware", sub: "Sube el archivo .bin para actualizar tu Radar.", btn: "Subir y Actualizar", back: "⬅️ Volver a Ajustes" },
+      "en": { title: "🔄 Update Firmware", sub: "Upload the .bin file to update your Radar.", btn: "Upload and Update", back: "⬅️ Back to Settings" }
+    };
+    window.addEventListener("DOMContentLoaded", () => {
+      const lang = "%LANG%";
+      if(i18nOta[lang]) {
+        document.querySelector("h2").innerText = i18nOta[lang].title;
+        document.querySelector("p.sub").innerText = i18nOta[lang].sub;
+        document.getElementById("btnUpload").innerText = i18nOta[lang].btn;
+        document.querySelector(".back").innerText = i18nOta[lang].back;
+      }
+    });
+
     document.getElementById('upload_form').addEventListener('submit', function(e) {
       e.preventDefault();
       var btn = document.getElementById('btnUpload');
@@ -304,6 +431,8 @@ void handleRoot() {
   }
   html.replace("%WIFI_OPTIONS%", wifiOptions);
   
+  html.replace("%LANG_ES%", pref_lang == "es" ? "selected" : "");
+  html.replace("%LANG_EN%", pref_lang == "en" ? "selected" : "");
   html.replace("%SSID%", pref_ssid);
   html.replace("%PASS%", pref_pass);
   html.replace("%LAT%", String(pref_lat, 4));
@@ -329,6 +458,8 @@ void handleRoot() {
   html.replace("%C_RED%", pref_color == "red" ? "selected" : "");
   html.replace("%C_BLU%", pref_color == "blue" ? "selected" : "");
   html.replace("%C_ORA%", pref_color == "orange" ? "selected" : "");
+  html.replace("%U_M%", pref_units == "m" ? "selected" : "");
+  html.replace("%U_FT%", pref_units == "ft" ? "selected" : "");
   
   html.replace("%GHOST_MINS%", String(pref_ghost_mins));
   html.replace("%GHOST_SPEED%", String(pref_ghost_speed));
@@ -392,6 +523,16 @@ void handleSave() {
     preferences.putInt("clock_mode", server.arg("clock_mode").toInt());
     pref_clock_mode = server.arg("clock_mode").toInt();
   }
+  
+  if (server.hasArg("lang")) {
+    preferences.putString("lang", server.arg("lang"));
+    pref_lang = server.arg("lang");
+  }
+  if (server.hasArg("units")) {
+    preferences.putString("units", server.arg("units"));
+    pref_units = server.arg("units");
+  }
+
   preferences.putString("airport_id", server.arg("airport_id"));
   preferences.putString("aemet_key", server.arg("aemet_key"));
   preferences.putString("aemet_idema", server.arg("aemet_idema"));
@@ -479,7 +620,9 @@ void setupWebServer() {
   server.on("/api/status", handleStatus);
   
   server.on("/update_page", HTTP_GET, []() {
-    server.send(200, "text/html; charset=utf-8", otaHtml);
+    String otaStr = otaHtml;
+    otaStr.replace("%LANG%", pref_lang);
+    server.send(200, "text/html; charset=utf-8", otaStr);
   });
   
   server.on("/update", HTTP_POST, []() {

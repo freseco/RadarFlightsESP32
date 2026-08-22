@@ -82,6 +82,8 @@ void setup() {
   pref_geoip = preferences.getBool("geoip", false);
   pref_airport_id = preferences.getString("airport_id", "MAD");
   pref_country = preferences.getString("country", "Spain");
+  pref_lang = preferences.getString("lang", "es");
+  pref_units = preferences.getString("units", "m");
   pref_offset = preferences.getLong("offset", 3600); // Default to UTC+1
   pref_dst = preferences.getBool("dst", true); // Default to DST ON for summer
   pref_ghost_mins = preferences.getInt("ghost", 10);

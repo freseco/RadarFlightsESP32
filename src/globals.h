@@ -22,6 +22,8 @@ extern int pref_max_planes;
 extern String pref_color;
 extern bool pref_geoip;
 extern String pref_airport_id;
+extern String pref_lang;
+extern String pref_units;
 extern long pref_offset;
 extern bool pref_dst;
 extern int pref_ghost_mins;
@@ -29,6 +31,7 @@ extern int pref_ghost_speed;
 extern int pref_ghost_trail;
 extern int pref_clock_mode;
 
+String tr(const String& es, const String& en);
 
 extern TFT_eSPI tft;
 extern TFT_eSprite spr;

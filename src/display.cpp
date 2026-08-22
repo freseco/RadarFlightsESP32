@@ -32,10 +32,10 @@ void animateZoom(bool zoomIn) {
     
     spr.setTextColor(TFT_WHITE, TFT_BLACK);
     spr.setTextDatum(MC_DATUM);
-    spr.drawString("N", centerX, 8);
-    spr.drawString("S", centerX, 240 - 8); 
-    spr.drawString("E", 240 - 8, centerY);
-    spr.drawString("O", 8, centerY);
+    spr.drawString(tr("N", "N"), centerX, 8);
+    spr.drawString(tr("S", "S"), centerX, 240 - 8); 
+    spr.drawString(tr("E", "E"), 240 - 8, centerY);
+    spr.drawString(tr("O", "W"), 8, centerY);
     
     spr.pushSprite(0, 0);
     delay(delayPerFrame);
@@ -50,13 +50,13 @@ void drawSplashScreen(String wifiStatus, uint16_t wifiColor) {
   tft.drawString("RadarFlights", centerX, 40);
   
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Por Freseco (2026)", centerX, 70);
+  tft.drawString(tr("Por Freseco (2026)", "By Freseco (2026)"), centerX, 70);
   
   tft.setTextColor(tft.color565(180, 180, 180), TFT_BLACK);
   tft.drawString("freseco@gmail.com", centerX, 100);
   
   tft.setTextColor(tft.color565(100, 150, 255), TFT_BLACK);
-  tft.drawString("Datos: Airplanes.live", centerX, 130);
+  tft.drawString(tr("Datos: Airplanes.live", "Data: Airplanes.live"), centerX, 130);
 
   tft.setTextColor(tft.color565(200, 200, 200), TFT_BLACK);
   tft.drawString("v" + FIRMWARE_VERSION, centerX, 160);
@@ -78,10 +78,10 @@ void drawRadarUI() {
   
   spr.setTextColor(TFT_WHITE, TFT_BLACK);
   spr.setTextDatum(MC_DATUM);
-  spr.drawString("N", centerX, 8);
-  spr.drawString("S", centerX, 240 - 8); 
-  spr.drawString("E", 240 - 8, centerY);
-  spr.drawString("O", 8, centerY);
+  spr.drawString(tr("N", "N"), centerX, 8);
+  spr.drawString(tr("S", "S"), centerX, 240 - 8); 
+  spr.drawString(tr("E", "E"), 240 - 8, centerY);
+  spr.drawString(tr("O", "W"), 8, centerY);
   
   if (pref_airport_id != "" && !pref_geoip) {
     spr.setTextColor(spr.color565(100, 100, 100), TFT_BLACK);
@@ -100,7 +100,7 @@ void drawRadarUI() {
   }
   if (count > pref_max_planes) count = pref_max_planes;
   
-  String planesText = "Aviones: " + String(count);
+  String planesText = tr("Aviones: ", "Planes: ") + String(count);
   spr.drawString(planesText, centerX, 240 - 20);
   
   // Mostrar solo el último octeto de la IP, asegurando que quede dentro de pantallas circulares
@@ -235,17 +235,24 @@ void drawPlanes() {
     bool hasCs = (cs.length() > 0);
     bool hasAlt = (p.altitude > 0);
     
+    String altStr = "";
+    if (pref_units == "ft") {
+      altStr = String((int)(p.altitude * 3.28084)) + "ft";
+    } else {
+      altStr = String((int)p.altitude) + "m";
+    }
+
     if (hasCs && hasAlt) {
       spr.setTextColor(textColor);
       spr.drawString(cs, textX, py - 5);
       spr.setTextColor(TFT_WHITE);
-      spr.drawString(String((int)p.altitude) + "m", textX, py + 5);
+      spr.drawString(altStr, textX, py + 5);
     } else if (hasCs) {
       spr.setTextColor(textColor);
       spr.drawString(cs, textX, py);
     } else if (hasAlt) {
       spr.setTextColor(TFT_WHITE);
-      spr.drawString(String((int)p.altitude) + "m", textX, py);
+      spr.drawString(altStr, textX, py);
     }
     
     drawn++;
@@ -581,34 +588,34 @@ void drawMoonUI(struct tm* timeinfo) {
   
   switch(phase) {
     case 0: 
-      phaseName = "Luna Nueva";
+      phaseName = tr("Luna Nueva", "New Moon");
       spr.fillCircle(mX, mY, mR, shadowColor);
       break;
     case 1: 
-      phaseName = "Creciente Concava";
+      phaseName = tr("Creciente Concava", "Waxing Crescent");
       spr.fillCircle(mX - 25, mY, mR, shadowColor);
       break;
     case 2: 
-      phaseName = "Cuarto Creciente";
+      phaseName = tr("Cuarto Creciente", "First Quarter");
       spr.fillRect(mX - mR, mY - mR, mR, mR * 2, shadowColor);
       break;
     case 3: 
-      phaseName = "Creciente Convexa";
+      phaseName = tr("Creciente Convexa", "Waxing Gibbous");
       spr.fillCircle(mX - 50, mY, mR, shadowColor); 
       break;
     case 4: 
-      phaseName = "Luna Llena";
+      phaseName = tr("Luna Llena", "Full Moon");
       break;
     case 5: 
-      phaseName = "Menguante Convexa";
+      phaseName = tr("Menguante Convexa", "Waning Gibbous");
       spr.fillCircle(mX + 50, mY, mR, shadowColor);
       break;
     case 6: 
-      phaseName = "Cuarto Menguante";
+      phaseName = tr("Cuarto Menguante", "Last Quarter");
       spr.fillRect(mX, mY - mR, mR, mR * 2, shadowColor);
       break;
     case 7: 
-      phaseName = "Menguante Concava";
+      phaseName = tr("Menguante Concava", "Waning Crescent");
       spr.fillCircle(mX + 25, mY, mR, shadowColor);
       break;
   }
@@ -680,10 +687,10 @@ void drawWeatherUI(struct tm* timeinfo) {
     spr.setTextColor(TFT_RED, TFT_BLACK);
     spr.setTextFont(2);
     spr.setTextSize(1);
-    spr.drawString("Sin datos del tiempo", centerX, centerY);
+    spr.drawString(tr("Sin datos del tiempo", "No weather data"), centerX, centerY);
     if (pref_aemet_key == "") {
       spr.setTextColor(TFT_YELLOW, TFT_BLACK);
-      spr.drawString("Falta API Key", centerX, centerY + 20);
+      spr.drawString(tr("Falta API Key", "Missing API Key"), centerX, centerY + 20);
     }
     spr.pushSprite(0, 0);
     return;
@@ -724,7 +731,7 @@ void drawWeatherUI(struct tm* timeinfo) {
   spr.setTextFont(2);
   spr.setTextSize(1);
   spr.setTextColor(TFT_WHITE, TFT_BLACK);
-  String extra = "HR: " + String(cw.hr, 0) + "%";
+  String extra = tr("HR: ", "RH: ") + String(cw.hr, 0) + "%";
   spr.drawString(extra, centerX, centerY + 60);
   
   int wY = centerY + 80;
@@ -749,14 +756,14 @@ void drawWeatherUI(struct tm* timeinfo) {
   // Dibujar puntos cardinales
   spr.setTextFont(1);
   spr.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  spr.drawString("N", aX, aY - 14);
-  spr.drawString("S", aX, aY + 14);
-  spr.drawString("E", aX + 14, aY);
-  spr.drawString("O", aX - 14, aY);
+  spr.drawString(tr("N", "N"), aX, aY - 14);
+  spr.drawString(tr("S", "S"), aX, aY + 14);
+  spr.drawString(tr("E", "E"), aX + 14, aY);
+  spr.drawString(tr("O", "W"), aX - 14, aY);
 
   if (cw.prec > 0) {
     spr.setTextColor(spr.color565(0, 200, 255), TFT_BLACK);
-    spr.drawString("Prec: " + String(cw.prec, 1) + "mm", centerX, centerY + 100);
+    spr.drawString(tr("Prec: ", "Rain: ") + String(cw.prec, 1) + "mm", centerX, centerY + 100);
   }
   
   spr.setTextFont(1);
