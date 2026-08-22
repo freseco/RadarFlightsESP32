@@ -1,0 +1,515 @@
+#include "web_server.h"
+#include <Update.h>
+
+// --- HTML DEL PORTAL CAUTIVO ---
+const char* htmlForm = R"=====(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Config Radar ESP32</title>
+  <style>
+    body { background-color: #121212; color: #fff; font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; }
+    h2 { text-align: center; color: #4CAF50; margin-bottom: 5px; }
+    p.sub { text-align: center; font-size: 14px; color: #888; margin-top: 0; margin-bottom: 25px; }
+    label { display: block; margin-top: 15px; font-size: 14px; color: #ccc; }
+    input, select { width: 100%; padding: 12px; margin-top: 5px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+    input:focus, select:focus { border-color: #4CAF50; outline: none; }
+    button { width: 100%; padding: 15px; margin-top: 30px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; }
+    button:active { background: #45a049; }
+    details { background: #1e1e1e; border-radius: 8px; margin-bottom: 15px; padding: 10px; border: 1px solid #333; }
+    summary { font-weight: bold; cursor: pointer; outline: none; font-size: 16px; color: #4CAF50; padding: 5px 0; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: ' ▼'; float: right; color: #888; }
+    details[open] summary::after { content: ' ▲'; }
+    details[open] summary { border-bottom: 1px solid #333; margin-bottom: 10px; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h2>⚙️ Ajustes del Radar</h2>
+  <p class="sub">Configura tu dispositivo</p>
+  <form action='/save' method='POST'>
+    <details>
+      <summary>📶 Conexión WiFi</summary>
+      <label>🌐 Red WiFi (Nombre):</label>
+      <input list='wifi_networks' name='ssid' value='%SSID%'>
+      <datalist id='wifi_networks'>
+        %WIFI_OPTIONS%
+      </datalist>
+      <label>🔑 Contraseña WiFi:</label>
+      <input type='password' name='pass' value='%PASS%'>
+    </details>
+    
+    <details>
+      <summary>🌍 Ubicación y Área</summary>
+      <label>🌍 Autolocalizar por IP:</label>
+      <select name='geoip'>
+        <option value='1' %GEO_ON%>Sí (Ignora manuales)</option>
+        <option value='0' %GEO_OFF%>No (Usar manuales)</option>
+      </select>
+      <label>🏢 Aeropuertos Famosos (Auto-relleno):</label>
+      <select id='airportSelect' onchange='if(this.value){var p=this.value.split(",");document.getElementById("lat").value=p[0];document.getElementById("lon").value=p[1];document.getElementById("airport_id").value=p[2];}'>
+        <option value=''>-- Selecciona un aeropuerto --</option>
+        <option value='40.4722,-3.5609,MAD'>Madrid-Barajas (MAD) 🇪🇸</option>
+        <option value='51.4700,-0.4543,LHR'>Londres Heathrow (LHR) 🇬🇧</option>
+        <option value='40.6413,-73.7781,JFK'>New York (JFK) 🇺🇸</option>
+        <option value='25.2532,55.3657,DXB'>Dubái (DXB) 🇦🇪</option>
+        <option value='35.5494,139.7798,HND'>Tokio Haneda (HND) 🇯🇵</option>
+        <option value='49.0097,2.5479,CDG'>París CDG (CDG) 🇫🇷</option>
+        <option value='52.3105,4.7683,AMS'>Ámsterdam Schiphol (AMS) 🇳🇱</option>
+        <option value='50.0379,8.5622,FRA'>Frankfurt (FRA) 🇩🇪</option>
+        <option value='33.6407,-84.4277,ATL'>Atlanta Hartsfield (ATL) 🇺🇸</option>
+        <option value='1.3644,103.9915,SIN'>Singapur Changi (SIN) 🇸🇬</option>
+      </select>
+      
+      <input type='hidden' name='airport_id' id='airport_id' value='%AIRPORT_ID%'>
+      <label>📍 Latitud (Manual):</label>
+      <input type='number' step='any' name='lat' id='lat' value='%LAT%' oninput='document.getElementById("airport_id").value="";'>
+      <label>📍 Longitud (Manual):</label>
+      <input type='number' step='any' name='lon' id='lon' value='%LON%' oninput='document.getElementById("airport_id").value="";'>
+      <button type='button' id='btnGeo' style='background: #2196F3; margin-top: 15px; margin-bottom: 15px; padding: 12px; font-size: 16px; width: 100%; border: none; border-radius: 4px; color: white;'>🧭 Obtener por Red (IP)</button>
+      
+      <label>📡 Radio del Radar (km):</label>
+      <input type='number' step='1' name='rad' value='%RAD%'>
+    </details>
+
+    <details>
+      <summary>🌤️ El Tiempo (AEMET)</summary>
+      <label>🔑 API Key de AEMET:</label>
+      <input type='text' name='aemet_key' value='%AEMET_KEY%'>
+      <label>🏢 Estaciones AEMET (Auto-relleno):</label>
+      <select id='stationSelect' onchange='if(this.value){document.getElementById("aemet_idema").value=this.value;}'>
+        <option value=''>-- Selecciona una estación representativa --</option>
+        <option value='3195'>Madrid, Retiro (3195)</option>
+        <option value='3129'>Madrid, Aeropuerto (3129)</option>
+        <option value='0201D'>Barcelona, Aeropuerto (0201D)</option>
+        <option value='0076'>Barcelona, Raval (0076)</option>
+        <option value='8414A'>Valencia, Aeropuerto (8414A)</option>
+        <option value='4642E'>Sevilla, Aeropuerto (4642E)</option>
+        <option value='8500A'>Zaragoza, Aeropuerto (8500A)</option>
+        <option value='6155A'>Málaga, Aeropuerto (6155A)</option>
+        <option value='7228'>Murcia (7228)</option>
+        <option value='9771C'>Palma de Mallorca, Aerop. (9771C)</option>
+        <option value='C139E'>Gran Canaria, Aeropuerto (C139E)</option>
+        <option value='8025'>Alicante/Alacant (8025)</option>
+        <option value='5402'>Córdoba, Aeropuerto (5402)</option>
+        <option value='2422'>Valladolid (2422)</option>
+        <option value='1387'>A Coruña (1387)</option>
+        <option value='1014'>San Sebastián, Igueldo (1014)</option>
+        <option value='1208H'>Gijón, Musel (1208H)</option>
+        <option value='1428'>Santiago de Compostela, Aerop. (1428)</option>
+        <option value='C447A'>Tenerife Norte, Aeropuerto (C447A)</option>
+        <option value='3469A'>Cáceres (3469A)</option>
+        <option value='4452'>Badajoz (4452)</option>
+        <option value='4358X'>Don Benito (4358X)</option>
+      </select>
+      <label>📍 ID de Estación (Manual o auto por GPS):</label>
+      <input type='text' name='aemet_idema' id='aemet_idema' value='%AEMET_IDEMA%'>
+    </details>
+
+    <details>
+      <summary>🕒 Hora y Fecha</summary>
+      <label>🕒 Zona Horaria (Horas desde UTC):</label>
+      <input type='number' step='1' name='utc_offset' value='%UTC_OFFSET%'>
+      <label>☀️ Horario de Verano (+1h):</label>
+      <select name='dst'>
+        <option value='1' %DST_ON%>Activado</option>
+        <option value='0' %DST_OFF%>Desactivado</option>
+      </select>
+      <label>⌚ Modo de Reloj:</label>
+      <select name='clock_mode'>
+        <option value='0' %CM_0%>Ciclar todos</option>
+        <option value='1' %CM_1%>Solo Digital</option>
+        <option value='2' %CM_2%>Solo Analógico 12h</option>
+        <option value='3' %CM_3%>Solo Analógico 24h</option>
+      </select>
+    </details>
+
+    <details>
+      <summary>⚙️ Ajustes Visuales</summary>
+      <label>✈️ Máx. Aviones Visibles:</label>
+      <input type='number' name='maxp' value='%MAXP%'>
+      <label>🎨 Color de los Aviones:</label>
+      <select name='color'>
+        <option value='red' %C_RED%>Rojo</option>
+        <option value='blue' %C_BLU%>Azul</option>
+        <option value='orange' %C_ORA%>Naranja</option>
+      </select>
+      <label>👻 Avión Fantasma (minutos, 0=Apagado):</label>
+      <input type='number' name='ghost' value='%GHOST_MINS%'>
+      <label>💨 Velocidad del Avión (px/s):</label>
+      <input type='number' name='ghost_speed' value='%GHOST_SPEED%'>
+      <label>🌠 Longitud de la estela (puntos):</label>
+      <input type='number' name='ghost_trail' value='%GHOST_TRAIL%'>
+    </details>
+
+    <details>
+      <summary>📊 Estado y Estadísticas</summary>
+      <p style='color: #ccc; font-size: 14px;'><b>Temp CPU:</b> <span id='stat_cpu'>%CPU_TEMP%</span> °C</p>
+      <p style='color: #ccc; font-size: 14px;'><b>Temp AEMET:</b> <span id='stat_aemet'>%AEMET_TEMP%</span> °C</p>
+      <p style='color: #ccc; font-size: 14px;'><b>Aviones Mostrados:</b> <span id='stat_planes'>%PLANES_COUNT%</span></p>
+      <p style='color: #ccc; font-size: 14px; margin-bottom: 5px;'><b>Registro de Errores:</b></p>
+      <div id='stat_errors' style='background: #333; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; white-space: pre-wrap; color: #ffeb3b;'>%ERROR_LOG%</div>
+    </details>
+
+    <button type='submit'>💾 Guardar y Reiniciar</button>
+  </form>
+
+  <div style="text-align: center; margin-top: 30px;">
+    <a href="/update_page" style="display: block; background: #ff9800; color: white; padding: 12px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-bottom: 15px;">🔄 Actualizar Firmware (OTA)</a>
+    <a href="https://globe.airplanes.live/" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 16px;">🌍 Ver Mapa Global en Airplanes.live</a>
+  </div>
+
+  <script>
+    document.getElementById('btnGeo').addEventListener('click', function() {
+      var btn = this;
+      var originalText = btn.innerText;
+      btn.innerText = '⏳ Obteniendo...';
+      fetch('http://ip-api.com/json/')
+        .then(r => r.json())
+        .then(data => {
+          if(data.status === "success" && data.lat && data.lon) {
+            document.getElementById('lat').value = data.lat;
+            document.getElementById('lon').value = data.lon;
+            document.getElementById('airport_id').value = '';
+            btn.innerText = '✅ ¡Coordenadas Obtenidas!';
+            btn.style.background = '#4CAF50';
+          } else {
+            btn.innerText = '❌ Error en la API';
+            btn.style.background = '#f44336';
+          }
+          setTimeout(() => { btn.innerText = originalText; btn.style.background = '#2196F3'; }, 3000);
+        })
+        .catch(e => {
+          btn.innerText = '❌ Sin conexión a Internet';
+          btn.style.background = '#f44336';
+          setTimeout(() => { btn.innerText = originalText; btn.style.background = '#2196F3'; }, 3000);
+        });
+    });
+
+    // Actualizar estado en vivo
+    setInterval(() => {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('stat_cpu').innerText = data.cpu;
+          document.getElementById('stat_aemet').innerText = data.aemet;
+          document.getElementById('stat_planes').innerText = data.planes;
+          document.getElementById('stat_errors').innerText = data.errors;
+        }).catch(e => console.log('Error updating status'));
+    }, 5000);
+  </script>
+  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com</div>
+</body>
+</html>
+)=====";
+
+const char* otaHtml = R"=====(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Actualizar Firmware</title>
+  <style>
+    body { background-color: #121212; color: #fff; font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; text-align: center; }
+    h2 { color: #4CAF50; margin-bottom: 5px; }
+    p.sub { font-size: 14px; color: #888; margin-bottom: 25px; }
+    input[type='file'] { margin: 20px 0; font-size: 16px; background: #222; padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; color: white; }
+    button { width: 100%; padding: 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; }
+    button:active { background: #45a049; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .back { display: block; margin-top: 20px; color: #2196F3; text-decoration: none; }
+    #progress-container { display: none; margin-top: 20px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #444; }
+    #progress-bar { width: 0%; height: 20px; background: #4CAF50; transition: width 0.2s; }
+    #status { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>🔄 Actualizar Firmware</h2>
+  <p class="sub">Sube el archivo .bin para actualizar tu Radar.</p>
+  <form method='POST' action='/update' enctype='multipart/form-data' id='upload_form'>
+    <input type='file' name='update' id='file' accept='.bin' required>
+    <button type='submit' id='btnUpload'>Subir y Actualizar</button>
+  </form>
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+  <p id="status"></p>
+  <a href='/' class='back'>⬅️ Volver a Ajustes</a>
+  
+  <script>
+    document.getElementById('upload_form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btnUpload');
+      var fileInput = document.getElementById('file');
+      if(fileInput.files.length === 0) return;
+      
+      btn.innerText = 'Subiendo...';
+      btn.disabled = true;
+      document.getElementById('progress-container').style.display = 'block';
+      var status = document.getElementById('status');
+      status.innerText = 'Subiendo archivo...';
+      
+      var file = fileInput.files[0];
+      var formData = new FormData();
+      formData.append('update', file);
+      
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/update', true);
+      
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          var percentComplete = (e.loaded / e.total) * 100;
+          document.getElementById('progress-bar').style.width = percentComplete + '%';
+          if(percentComplete == 100) {
+            status.innerText = 'Instalando firmware, por favor espera...';
+          }
+        }
+      };
+      
+      xhr.onload = function() {
+        if (xhr.status == 200 && xhr.responseText.trim() === 'OK') {
+          status.innerHTML = '<span style="color:#4CAF50;">✅ ¡Actualización completada! Reiniciando...</span>';
+          setTimeout(function() { window.location.href = '/'; }, 8000);
+        } else {
+          status.innerHTML = '<span style="color:#f44336;">❌ Error en la actualización.</span>';
+          btn.innerText = 'Intentar de nuevo';
+          btn.disabled = false;
+        }
+      };
+      
+      xhr.onerror = function() {
+        status.innerHTML = '<span style="color:#f44336;">❌ Error de red.</span>';
+        btn.innerText = 'Intentar de nuevo';
+        btn.disabled = false;
+      };
+      
+      xhr.send(formData);
+    });
+  </script>
+  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com</div>
+</body>
+</html>
+)=====";
+
+void handleRoot() {
+  String html = htmlForm;
+  
+  int n = WiFi.scanNetworks();
+  String wifiOptions = "";
+  for (int i = 0; i < n; ++i) {
+    wifiOptions += "<option value='" + WiFi.SSID(i) + "'>";
+  }
+  html.replace("%WIFI_OPTIONS%", wifiOptions);
+  
+  html.replace("%SSID%", pref_ssid);
+  html.replace("%PASS%", pref_pass);
+  html.replace("%LAT%", String(pref_lat, 4));
+  html.replace("%LON%", String(pref_lon, 4));
+  html.replace("%AIRPORT_ID%", pref_airport_id);
+  html.replace("%RAD%", String((int)pref_rad));
+  html.replace("%MAXP%", String(pref_max_planes));
+  html.replace("%AEMET_KEY%", pref_aemet_key);
+  html.replace("%AEMET_IDEMA%", pref_idema);
+  html.replace("%UTC_OFFSET%", String(pref_offset / 3600));
+  html.replace("%DST_ON%", pref_dst ? "selected" : "");
+  html.replace("%DST_OFF%", !pref_dst ? "selected" : "");
+  
+  html.replace("%CM_0%", pref_clock_mode == 0 ? "selected" : "");
+  html.replace("%CM_1%", pref_clock_mode == 1 ? "selected" : "");
+  html.replace("%CM_2%", pref_clock_mode == 2 ? "selected" : "");
+  html.replace("%CM_3%", pref_clock_mode == 3 ? "selected" : "");
+
+  
+  html.replace("%GEO_ON%", pref_geoip ? "selected" : "");
+  html.replace("%GEO_OFF%", !pref_geoip ? "selected" : "");
+  
+  html.replace("%C_RED%", pref_color == "red" ? "selected" : "");
+  html.replace("%C_BLU%", pref_color == "blue" ? "selected" : "");
+  html.replace("%C_ORA%", pref_color == "orange" ? "selected" : "");
+  
+  html.replace("%GHOST_MINS%", String(pref_ghost_mins));
+  html.replace("%GHOST_SPEED%", String(pref_ghost_speed));
+  html.replace("%GHOST_TRAIL%", String(pref_ghost_trail));
+  
+  html.replace("%CPU_TEMP%", String((int)temperatureRead()));
+  html.replace("%AEMET_TEMP%", currentWeather.valid ? String(currentWeather.ta, 1) : "N/D");
+  
+  int count = 0;
+  if (dataMutex != NULL) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    count = planes.size();
+    xSemaphoreGive(dataMutex);
+  }
+  html.replace("%PLANES_COUNT%", String(count));
+  
+  String errLogHtml = "";
+  if (errorLog.empty()) {
+    errLogHtml = "Sin errores.";
+  } else {
+    for (String e : errorLog) {
+      errLogHtml += e + "\n";
+    }
+  }
+  html.replace("%ERROR_LOG%", errLogHtml);
+
+  server.send(200, "text/html; charset=utf-8", html);
+}
+
+void handleSave() {
+  String new_ssid = server.arg("ssid");
+  String new_pass = server.arg("pass");
+  float new_rad = server.arg("rad").toFloat();
+  
+  bool wifiChanged = (new_ssid != pref_ssid || new_pass != pref_pass);
+  
+  if (new_rad < pref_rad) zoomAnimState = 1;
+  else if (new_rad > pref_rad) zoomAnimState = 2;
+
+  preferences.putString("ssid", new_ssid);
+  preferences.putString("pass", new_pass);
+  preferences.putBool("geoip", server.arg("geoip") == "1");
+  preferences.putFloat("lat", server.arg("lat").toFloat());
+  preferences.putFloat("lon", server.arg("lon").toFloat());
+  preferences.putFloat("rad", server.arg("rad").toFloat());
+  preferences.putInt("maxp", server.arg("maxp").toInt());
+  preferences.putString("color", server.arg("color"));
+  if (server.hasArg("ghost")) {
+    preferences.putInt("ghost", server.arg("ghost").toInt());
+    pref_ghost_mins = server.arg("ghost").toInt();
+  }
+  if (server.hasArg("ghost_speed")) {
+    preferences.putInt("ghost_speed", server.arg("ghost_speed").toInt());
+    pref_ghost_speed = server.arg("ghost_speed").toInt();
+  }
+  if (server.hasArg("ghost_trail")) {
+    preferences.putInt("ghost_trail", server.arg("ghost_trail").toInt());
+    pref_ghost_trail = server.arg("ghost_trail").toInt();
+  }
+  if (server.hasArg("clock_mode")) {
+    preferences.putInt("clock_mode", server.arg("clock_mode").toInt());
+    pref_clock_mode = server.arg("clock_mode").toInt();
+  }
+  preferences.putString("airport_id", server.arg("airport_id"));
+  preferences.putString("aemet_key", server.arg("aemet_key"));
+  preferences.putString("aemet_idema", server.arg("aemet_idema"));
+  
+  if (server.hasArg("utc_offset")) {
+    preferences.putLong("offset", server.arg("utc_offset").toInt() * 3600);
+    preferences.putBool("dst", server.arg("dst") == "1");
+  }
+  
+  // Actualizar variables en memoria
+  pref_ssid = new_ssid;
+  pref_pass = new_pass;
+  pref_geoip = server.arg("geoip") == "1";
+  pref_lat = server.arg("lat").toFloat();
+  pref_lon = server.arg("lon").toFloat();
+  pref_rad = new_rad;
+  pref_max_planes = server.arg("maxp").toInt();
+  pref_color = server.arg("color");
+  pref_airport_id = server.arg("airport_id");
+  pref_aemet_key = server.arg("aemet_key");
+  pref_idema = server.arg("aemet_idema");
+  if (server.hasArg("utc_offset")) {
+    pref_offset = server.arg("utc_offset").toInt() * 3600;
+    pref_dst = server.arg("dst") == "1";
+    configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
+  }
+  airportShownInitially = false;
+
+  // Forzar redibujado y búsqueda limpia inmediata
+  planes.clear();
+  lastFetchTime = 0;
+  
+  if (wifiChanged) {
+    String successHtml = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta charset='utf-8'></head>"
+                         "<body style='background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px 20px;'>"
+                         "<h2 style='color:#4CAF50; margin-bottom:20px;'>✅ Guardado con éxito.</h2>"
+                         "<p style='color:#888; margin-bottom:40px;'>Reiniciando WiFi...</p>"
+                         "<a href='/' style='background-color:#4CAF50; color:white; padding:15px 20px; text-decoration:none; border-radius:6px; font-size:18px; font-weight:bold; display:inline-block; width:80%; box-sizing:border-box;'>Volver al Menú</a>"
+                         "</body></html>";
+    server.send(200, "text/html; charset=utf-8", successHtml);
+    delay(1500);
+    ESP.restart();
+  } else {
+    String successHtml = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta charset='utf-8'></head>"
+                         "<body style='background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px 20px;'>"
+                         "<h2 style='color:#4CAF50; margin-bottom:20px;'>⚡ Ajustes Aplicados en Vivo</h2>"
+                         "<p style='color:#888; margin-bottom:40px;'>No ha sido necesario reiniciar. Mira la pantalla de tu radar.</p>"
+                         "<a href='/' style='background-color:#4CAF50; color:white; padding:15px 20px; text-decoration:none; border-radius:6px; font-size:18px; font-weight:bold; display:inline-block; width:80%; box-sizing:border-box;'>Volver al Menú</a>"
+                         "</body></html>";
+  server.send(200, "text/html; charset=utf-8", successHtml);
+  }
+}
+
+void handleStatus() {
+  String json = "{";
+  json += "\"cpu\":\"" + String((int)temperatureRead()) + "\",";
+  json += "\"aemet\":\"" + (currentWeather.valid ? String(currentWeather.ta, 1) : "N/D") + "\",";
+  
+  int count = 0;
+  if (dataMutex != NULL) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    count = planes.size();
+    xSemaphoreGive(dataMutex);
+  }
+  json += "\"planes\":\"" + String(count) + "\",";
+  
+  String errLogHtml = "";
+  if (errorLog.empty()) {
+    errLogHtml = "Sin errores.";
+  } else {
+    for (String e : errorLog) {
+      errLogHtml += e + "\\n";
+    }
+  }
+  errLogHtml.replace("\"", "\\\"");
+  json += "\"errors\":\"" + errLogHtml + "\"";
+  json += "}";
+  
+  server.send(200, "application/json", json);
+}
+
+void setupWebServer() {
+  server.on("/", handleRoot);
+  server.on("/save", handleSave);
+  server.on("/api/status", handleStatus);
+  
+  server.on("/update_page", HTTP_GET, []() {
+    server.send(200, "text/html; charset=utf-8", otaHtml);
+  });
+  
+  server.on("/update", HTTP_POST, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { // true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+
+  // Redirigir cualquier otra petición a la raíz (Captive Portal)
+  server.onNotFound([]() { 
+    server.sendHeader("Location", "/", true);
+    server.send(302, "text/plain", "");
+  });
+  server.begin();
+}
