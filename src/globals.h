@@ -62,7 +62,12 @@ enum DisplayState {
   STATE_RADAR,
   STATE_TIME,
   STATE_WEATHER,
-  STATE_MOON
+  STATE_MOON,
+  STATE_HORIZON,
+  STATE_TARGET,
+  STATE_ISS,
+  STATE_SUN,
+  STATE_MAX
 };
 extern DisplayState currentState;
 extern String pref_country;
@@ -71,6 +76,28 @@ extern int timeDisplayMode;
 
 extern String pref_aemet_key;
 extern String pref_idema;
+
+// Screen Toggles
+extern bool pref_show_radar;
+extern bool pref_show_time;
+extern bool pref_show_weather;
+extern bool pref_show_moon;
+extern bool pref_show_horizon;
+extern bool pref_show_target;
+extern bool pref_show_iss;
+extern bool pref_show_sun;
+extern int pref_screen_time_s;
+
+// ISS Data
+extern float iss_lat;
+extern float iss_lon;
+extern unsigned long lastIssFetch;
+
+// Sun Data
+extern String sunriseTimeStr;
+extern String sunsetTimeStr;
+extern float sun_progress;
+extern unsigned long lastSunFetch;
 
 struct WeatherData {
   float ta;

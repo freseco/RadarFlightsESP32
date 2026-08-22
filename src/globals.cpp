@@ -21,6 +21,25 @@ int pref_ghost_speed = 150;
 int pref_ghost_trail = 100;
 int pref_clock_mode = 0; // 0=Cycle, 1=Digital, 2=Analog12h, 3=Analog24h
 
+bool pref_show_radar = true;
+bool pref_show_time = true;
+bool pref_show_weather = true;
+bool pref_show_moon = true;
+bool pref_show_horizon = true;
+bool pref_show_target = true;
+bool pref_show_iss = true;
+bool pref_show_sun = true;
+int pref_screen_time_s = 30;
+
+float iss_lat = 0.0;
+float iss_lon = 0.0;
+unsigned long lastIssFetch = 0;
+
+String sunriseTimeStr = "--:--";
+String sunsetTimeStr = "--:--";
+float sun_progress = 0.0;
+unsigned long lastSunFetch = 0;
+
 String tr(const String& es, const String& en) {
   if (pref_lang == "en") return en;
   return es;

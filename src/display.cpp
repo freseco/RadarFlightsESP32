@@ -879,3 +879,155 @@ void drawGhostPlane() {
     }
   }
 }
+
+void drawArtificialHorizon() {
+  spr.fillSprite(TFT_BLACK);
+  float minDist = 999999;
+  Airplane* target = nullptr;
+  for (int i=0; i<planes.size(); i++) {
+    if (planes[i].distanceKm < minDist) {
+      minDist = planes[i].distanceKm;
+      target = &planes[i];
+    }
+  }
+
+  spr.fillRect(0, 0, 240, 120, spr.color565(50, 150, 255)); // Sky
+  spr.fillRect(0, 120, 240, 120, spr.color565(139, 69, 19)); // Ground
+  spr.drawLine(0, 120, 240, 120, TFT_WHITE);
+  
+  spr.drawLine(centerX - 40, centerY, centerX - 10, centerY, TFT_GREEN);
+  spr.drawLine(centerX + 10, centerY, centerX + 40, centerY, TFT_GREEN);
+  spr.drawLine(centerX - 40, centerY, centerX - 40, centerY + 10, TFT_GREEN);
+  spr.drawLine(centerX + 40, centerY, centerX + 40, centerY + 10, TFT_GREEN);
+  spr.fillCircle(centerX, centerY, 2, TFT_GREEN);
+
+  spr.setTextDatum(MC_DATUM);
+
+  if (target != nullptr) {
+    spr.setTextSize(2);
+    
+    String altStr = "";
+    if (pref_units == "ft") altStr = String((int)(target->altitude * 3.28084));
+    else altStr = String((int)target->altitude);
+    spr.setTextColor(TFT_GREEN, spr.color565(50, 150, 255));
+    spr.drawString(altStr, 40, centerY - 20);
+    
+    String spdStr = String((int)target->velocity);
+    spr.drawString(spdStr, 200, centerY - 20);
+    
+    spr.drawString(String((int)target->heading), centerX, 20);
+    
+    spr.setTextSize(2);
+    spr.setTextColor(TFT_GREEN, spr.color565(139, 69, 19));
+    spr.drawString(target->callsign, centerX, 200);
+  } else {
+    spr.setTextSize(2);
+    spr.setTextColor(TFT_GREEN, spr.color565(139, 69, 19));
+    spr.drawString("NO TARGET", centerX, 200);
+  }
+}
+
+void drawTargetLock() {
+  spr.fillSprite(TFT_BLACK);
+  
+  spr.drawCircle(centerX, centerY, 80, TFT_RED);
+  spr.drawCircle(centerX, centerY, 78, TFT_RED);
+  spr.drawLine(centerX, centerY - 100, centerX, centerY - 60, TFT_RED);
+  spr.drawLine(centerX, centerY + 60, centerX, centerY + 100, TFT_RED);
+  spr.drawLine(centerX - 100, centerY, centerX - 60, centerY, TFT_RED);
+  spr.drawLine(centerX + 60, centerY, centerX + 100, centerY, TFT_RED);
+  
+  float minDist = 999999;
+  Airplane* target = nullptr;
+  for (int i=0; i<planes.size(); i++) {
+    if (planes[i].distanceKm < minDist) {
+      minDist = planes[i].distanceKm;
+      target = &planes[i];
+    }
+  }
+
+  spr.setTextDatum(MC_DATUM);
+  if (target != nullptr) {
+    spr.setTextColor(TFT_WHITE);
+    spr.setTextSize(3);
+    spr.drawString(target->callsign, centerX, centerY - 20);
+    
+    spr.setTextSize(2);
+    spr.setTextColor(TFT_YELLOW);
+    spr.drawString(String(target->distanceKm, 1) + " KM", centerX, centerY + 20);
+    
+    String altStr = "";
+    if (pref_units == "ft") altStr = String((int)(target->altitude * 3.28084)) + " FT";
+    else altStr = String((int)target->altitude) + " M";
+    spr.setTextColor(TFT_CYAN);
+    spr.drawString(altStr, centerX, centerY + 50);
+  } else {
+    spr.setTextColor(TFT_RED);
+    spr.setTextSize(2);
+    spr.drawString("SEARCHING...", centerX, centerY);
+  }
+}
+
+void drawISS() {
+  spr.fillSprite(TFT_BLACK);
+  
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextColor(TFT_WHITE);
+  spr.setTextSize(2);
+  spr.drawString("ISS TRACKER", centerX, 30);
+  
+  spr.drawCircle(centerX, centerY, 70, spr.color565(0, 50, 100));
+  spr.drawLine(centerX - 70, centerY, centerX + 70, centerY, spr.color565(50, 50, 50));
+  spr.drawLine(centerX, centerY - 70, centerX, centerY + 70, spr.color565(50, 50, 50));
+  
+  float hX = centerX + (pref_lon * (70.0/180.0));
+  float hY = centerY - (pref_lat * (70.0/90.0));
+  spr.fillCircle(hX, hY, 3, TFT_GREEN);
+  
+  float iX = centerX + (iss_lon * (70.0/180.0));
+  float iY = centerY - (iss_lat * (70.0/90.0));
+  spr.fillCircle(iX, iY, 4, TFT_RED);
+  spr.drawCircle(iX, iY, 8, TFT_RED);
+  
+  float dy = iss_lat - pref_lat;
+  float dx = iss_lon - pref_lon;
+  float dist = sqrt(dx*dx + dy*dy) * 111.0;
+  
+  spr.setTextSize(2);
+  spr.setTextColor(TFT_YELLOW);
+  spr.drawString(String((int)dist) + " KM", centerX, 210);
+}
+
+void drawSunArc(struct tm* timeinfo) {
+  spr.fillSprite(TFT_BLACK);
+  
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextColor(TFT_ORANGE);
+  spr.setTextSize(2);
+  spr.drawString(tr("EL SOL", "THE SUN"), centerX, 30);
+  
+  int r = 80;
+  for(int a=180; a<=360; a+=2) {
+    float rad = a * M_PI / 180.0;
+    spr.drawPixel(centerX + cos(rad)*r, centerY + 30 + sin(rad)*r, TFT_DARKGREY);
+  }
+  spr.drawLine(centerX - 90, centerY + 30, centerX + 90, centerY + 30, spr.color565(100,50,0));
+  
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_WHITE);
+  spr.drawString(sunriseTimeStr, centerX - 80, centerY + 45);
+  spr.drawString(sunsetTimeStr, centerX + 80, centerY + 45);
+  
+  float angle = 180.0 + (sun_progress * 180.0);
+  if (angle > 360.0) angle = 360.0;
+  float rad = angle * M_PI / 180.0;
+  int sx = centerX + cos(rad)*r;
+  int sy = centerY + 30 + sin(rad)*r;
+  
+  if (sun_progress > 0.0 && sun_progress < 1.0) {
+    spr.fillCircle(sx, sy, 8, TFT_YELLOW);
+    spr.drawCircle(sx, sy, 10, TFT_ORANGE);
+  } else {
+    spr.fillCircle(sx, sy, 5, TFT_DARKGREY);
+  }
+}

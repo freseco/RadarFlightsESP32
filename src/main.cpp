@@ -42,6 +42,20 @@ void networkTask(void *pvParameters) {
       lastFetchTime = millis();
     }
     
+    if (now - lastIssFetch > 60000 || lastIssFetch == 0) {
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchISSLocation();
+      }
+      lastIssFetch = millis();
+    }
+    
+    if (now - lastSunFetch > 3600000 || lastSunFetch == 0) { // Every 1 hour
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchSunTimes();
+      }
+      lastSunFetch = millis();
+    }
+    
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield para el Watchdog y otras tareas RTOS
   }
 }
@@ -91,6 +105,17 @@ void setup() {
   pref_ghost_trail = preferences.getInt("ghost_trail", 100);
   pref_aemet_key = preferences.getString("aemet_key", "");
   pref_idema = preferences.getString("aemet_idema", "");
+  
+  pref_show_radar = preferences.getBool("sh_radar", true);
+  pref_show_time = preferences.getBool("sh_time", true);
+  pref_show_weather = preferences.getBool("sh_wea", true);
+  pref_show_moon = preferences.getBool("sh_moon", true);
+  pref_show_horizon = preferences.getBool("sh_horiz", true);
+  pref_show_target = preferences.getBool("sh_target", true);
+  pref_show_iss = preferences.getBool("sh_iss", true);
+  pref_show_sun = preferences.getBool("sh_sun", true);
+  
+  pref_screen_time_s = preferences.getInt("screen_time", 30);
 
   configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
 
@@ -197,6 +222,35 @@ void setup() {
   );
 }
 
+void nextState() {
+  for (int i = 0; i < STATE_MAX; i++) {
+    int next = (currentState + 1) % STATE_MAX;
+    currentState = (DisplayState)next;
+    
+    bool enabled = false;
+    if (currentState == STATE_RADAR && pref_show_radar) enabled = true;
+    else if (currentState == STATE_TIME && pref_show_time) enabled = true;
+    else if (currentState == STATE_WEATHER && pref_show_weather) enabled = true;
+    else if (currentState == STATE_MOON && pref_show_moon) enabled = true;
+    else if (currentState == STATE_HORIZON && pref_show_horizon) enabled = true;
+    else if (currentState == STATE_TARGET && pref_show_target) enabled = true;
+    else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
+    else if (currentState == STATE_SUN && pref_show_sun) enabled = true;
+    
+    if (enabled) {
+      if (currentState == STATE_TIME) {
+        if (pref_clock_mode == 0) {
+          timeDisplayMode = (timeDisplayMode + 1) % 3;
+        } else {
+          timeDisplayMode = pref_clock_mode - 1;
+        }
+      }
+      return;
+    }
+  }
+  currentState = STATE_RADAR; // Fallback
+}
+
 void loop() {
   if (isAPMode) {
     server.handleClient();
@@ -242,17 +296,7 @@ void loop() {
     if (now - lastBtnPress > 500) { // 500ms debounce
       lastBtnPress = now;
       
-      if (currentState == STATE_RADAR) {
-        currentState = STATE_TIME;
-        if (pref_clock_mode == 0) {
-          timeDisplayMode = (timeDisplayMode + 1) % 3;
-        } else {
-          timeDisplayMode = pref_clock_mode - 1;
-        }
-      }
-      else if (currentState == STATE_TIME) currentState = STATE_WEATHER;
-      else if (currentState == STATE_WEATHER) currentState = STATE_MOON;
-      else if (currentState == STATE_MOON) currentState = STATE_RADAR;
+      nextState();
       
       stateStartTime = now;
       spr.fillSprite(TFT_BLACK);
@@ -267,40 +311,19 @@ void loop() {
   if (timeValid) {
     if (currentState == STATE_RADAR) {
       if (timeinfo.tm_min % 5 == 0 && timeinfo.tm_sec == 0) {
-        currentState = STATE_TIME;
-        if (pref_clock_mode == 0) {
-          timeDisplayMode = (timeDisplayMode + 1) % 3; // Alternar entre digital, analógico 12h y analógico 24h
-        } else {
-          timeDisplayMode = pref_clock_mode - 1; // 1 -> 0 (Digital), 2 -> 1 (12h), 3 -> 2 (24h)
-        }
+        nextState();
         stateStartTime = now;
         spr.fillSprite(TFT_BLACK);
       }
-
-    } else if (currentState == STATE_TIME) {
-      if (now - stateStartTime >= 30000) { // 30 seconds
-        currentState = STATE_WEATHER;
+    } else {
+      if (now - stateStartTime >= (pref_screen_time_s * 1000UL)) {
+        nextState();
         stateStartTime = now;
-        spr.fillSprite(TFT_BLACK);
-      }
-    } else if (currentState == STATE_WEATHER) {
-      if (now - stateStartTime >= 30000) { // 30 seconds
-        if (timeinfo.tm_min % 30 == 0) {
-          currentState = STATE_MOON;
-          stateStartTime = now;
-          spr.fillSprite(TFT_BLACK);
-        } else {
-          currentState = STATE_RADAR;
-          spr.fillSprite(TFT_BLACK);
-        }
-      }
-    } else if (currentState == STATE_MOON) {
-      if (now - stateStartTime >= 30000) { // 30 seconds
-        currentState = STATE_RADAR;
         spr.fillSprite(TFT_BLACK);
       }
     }
   }
+
 
   if (currentState == STATE_TIME) {
     if (now - lastDrawTime > 1000) {
@@ -322,6 +345,30 @@ void loop() {
       lastDrawTime = now;
     }
     return; // Skip radar logic
+  } else if (currentState == STATE_HORIZON) {
+    if (now - lastDrawTime > 100) { 
+      drawArtificialHorizon();
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_TARGET) {
+    if (now - lastDrawTime > 250) { 
+      drawTargetLock();
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_ISS) {
+    if (now - lastDrawTime > 1000) { 
+      drawISS();
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_SUN) {
+    if (now - lastDrawTime > 1000) { 
+      drawSunArc(&timeinfo);
+      lastDrawTime = now;
+    }
+    return;
   }
   
   if (pref_airport_id != "" && !pref_geoip) {

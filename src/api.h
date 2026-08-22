@@ -6,5 +6,7 @@
 #include <ArduinoJson.h>
 
 void fetchAirplanes();
+void fetchISSLocation();
+void fetchSunTimes();
 void findClosestAemetStation();
 void fetchAemetWeather();

@@ -15,6 +15,8 @@ const char* htmlForm = R"=====(
     p.sub { text-align: center; font-size: 14px; color: #888; margin-top: 0; margin-bottom: 25px; }
     label { display: block; margin-top: 15px; font-size: 14px; color: #ccc; }
     input, select { width: 100%; padding: 12px; margin-top: 5px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+    input[type="checkbox"] { width: auto; display: inline-block; margin-right: 10px; transform: scale(1.5); }
+    .chk-container { margin-top: 15px; margin-bottom: 5px; display: flex; align-items: center; }
     input:focus, select:focus { border-color: #4CAF50; outline: none; }
     button { width: 100%; padding: 15px; margin-top: 30px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; }
     button:active { background: #45a049; }
@@ -132,6 +134,19 @@ const char* htmlForm = R"=====(
 
     <details>
       <summary>⚙️ Ajustes Visuales</summary>
+      <label name='lbl_screens'>📺 Pantallas Activas:</label>
+      <div style='text-align: left; margin-left: 20px; color: #ccc; font-size: 16px; margin-bottom: 20px;'>
+        <div class="chk-container"><input type='checkbox' name='sh_radar' value='1' %CHK_RADAR%> Radar</div>
+        <div class="chk-container"><input type='checkbox' name='sh_time' value='1' %CHK_TIME%> Reloj</div>
+        <div class="chk-container"><input type='checkbox' name='sh_wea' value='1' %CHK_WEA%> Tiempo (AEMET)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_moon' value='1' %CHK_MOON%> Fase Lunar</div>
+        <div class="chk-container"><input type='checkbox' name='sh_horiz' value='1' %CHK_HORIZ%> Horizonte Artificial</div>
+        <div class="chk-container"><input type='checkbox' name='sh_target' value='1' %CHK_TARGET%> Target Lock</div>
+        <div class="chk-container"><input type='checkbox' name='sh_iss' value='1' %CHK_ISS%> ISS Tracker</div>
+        <div class="chk-container"><input type='checkbox' name='sh_sun' value='1' %CHK_SUN%> Arco Solar</div>
+      </div>
+      <label>⏳ Tiempo de cada pantalla (segundos):</label>
+      <input type='number' name='screen_time' value='%SCREEN_TIME%'>
       <label>✈️ Máx. Aviones Visibles:</label>
       <input type='number' name='maxp' value='%MAXP%'>
       <label>🎨 Color de los Aviones:</label>
@@ -465,6 +480,17 @@ void handleRoot() {
   html.replace("%GHOST_SPEED%", String(pref_ghost_speed));
   html.replace("%GHOST_TRAIL%", String(pref_ghost_trail));
   
+  html.replace("%CHK_RADAR%", pref_show_radar ? "checked" : "");
+  html.replace("%CHK_TIME%", pref_show_time ? "checked" : "");
+  html.replace("%CHK_WEA%", pref_show_weather ? "checked" : "");
+  html.replace("%CHK_MOON%", pref_show_moon ? "checked" : "");
+  html.replace("%CHK_HORIZ%", pref_show_horizon ? "checked" : "");
+  html.replace("%CHK_TARGET%", pref_show_target ? "checked" : "");
+  html.replace("%CHK_ISS%", pref_show_iss ? "checked" : "");
+  html.replace("%CHK_SUN%", pref_show_sun ? "checked" : "");
+  
+  html.replace("%SCREEN_TIME%", String(pref_screen_time_s));
+  
   html.replace("%CPU_TEMP%", String((int)temperatureRead()));
   html.replace("%AEMET_TEMP%", currentWeather.valid ? String(currentWeather.ta, 1) : "N/D");
   
@@ -522,6 +548,29 @@ void handleSave() {
   if (server.hasArg("clock_mode")) {
     preferences.putInt("clock_mode", server.arg("clock_mode").toInt());
     pref_clock_mode = server.arg("clock_mode").toInt();
+  }
+  
+  pref_show_radar = server.hasArg("sh_radar");
+  pref_show_time = server.hasArg("sh_time");
+  pref_show_weather = server.hasArg("sh_wea");
+  pref_show_moon = server.hasArg("sh_moon");
+  pref_show_horizon = server.hasArg("sh_horiz");
+  pref_show_target = server.hasArg("sh_target");
+  pref_show_iss = server.hasArg("sh_iss");
+  pref_show_sun = server.hasArg("sh_sun");
+  
+  preferences.putBool("sh_radar", pref_show_radar);
+  preferences.putBool("sh_time", pref_show_time);
+  preferences.putBool("sh_wea", pref_show_weather);
+  preferences.putBool("sh_moon", pref_show_moon);
+  preferences.putBool("sh_horiz", pref_show_horizon);
+  preferences.putBool("sh_target", pref_show_target);
+  preferences.putBool("sh_iss", pref_show_iss);
+  preferences.putBool("sh_sun", pref_show_sun);
+  
+  if (server.hasArg("screen_time")) {
+    preferences.putInt("screen_time", server.arg("screen_time").toInt());
+    pref_screen_time_s = server.arg("screen_time").toInt();
   }
   
   if (server.hasArg("lang")) {

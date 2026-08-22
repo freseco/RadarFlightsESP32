@@ -269,3 +269,73 @@ void fetchAemetWeather() {
   }
   http.end();
 }
+
+void fetchISSLocation() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  WiFiClient client;
+  http.begin(client, "http://api.open-notify.org/iss-now.json");
+  http.setTimeout(5000);
+  int code = http.GET();
+  if (code == HTTP_CODE_OK) {
+    String payload = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      if (doc["message"] == "success") {
+        iss_lat = doc["iss_position"]["latitude"].as<float>();
+        iss_lon = doc["iss_position"]["longitude"].as<float>();
+      }
+    }
+  }
+  http.end();
+}
+
+void fetchSunTimes() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  String url = "https://api.sunrise-sunset.org/json?lat=" + String(pref_lat, 4) + "&lng=" + String(pref_lon, 4) + "&formatted=0";
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  http.begin(client, url);
+  http.setTimeout(8000);
+  int code = http.GET();
+  if (code == HTTP_CODE_OK) {
+    String payload = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      if (doc["status"] == "OK") {
+        String sr = doc["results"]["sunrise"].as<String>();
+        String ss = doc["results"]["sunset"].as<String>();
+        
+        int y, M, d, h, m, s;
+        if (sscanf(sr.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
+          h += (pref_offset / 3600);
+          if (pref_dst) h += 1;
+          if (h >= 24) h -= 24; else if (h < 0) h += 24;
+          char buf[10];
+          sprintf(buf, "%02d:%02d", h, m);
+          sunriseTimeStr = String(buf);
+          int sr_mins = h * 60 + m;
+          
+          if (sscanf(ss.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
+            h += (pref_offset / 3600);
+            if (pref_dst) h += 1;
+            if (h >= 24) h -= 24; else if (h < 0) h += 24;
+            sprintf(buf, "%02d:%02d", h, m);
+            sunsetTimeStr = String(buf);
+            int ss_mins = h * 60 + m;
+            
+            struct tm now_tm;
+            if (getLocalTime(&now_tm)) {
+               int now_mins = now_tm.tm_hour * 60 + now_tm.tm_min;
+               if (now_mins < sr_mins) sun_progress = 0.0;
+               else if (now_mins > ss_mins) sun_progress = 1.0;
+               else sun_progress = (float)(now_mins - sr_mins) / (float)(ss_mins - sr_mins);
+            }
+          }
+        }
+      }
+    }
+  }
+  http.end();
+}
