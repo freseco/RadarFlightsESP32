@@ -1033,32 +1033,50 @@ void drawSunArc(struct tm* timeinfo) {
   spr.setTextDatum(MC_DATUM);
   spr.setTextColor(TFT_ORANGE);
   spr.setTextSize(2);
-  spr.drawString(tr("EL SOL", "THE SUN"), centerX, 30);
+  spr.drawString(tr("SOL Y LUNA", "SUN & MOON"), centerX, 35);
   
   int r = 80;
+  // Draw Day Arc (top half)
   for(int a=180; a<=360; a+=2) {
     float rad = a * M_PI / 180.0;
-    spr.drawPixel(centerX + cos(rad)*r, centerY + 30 + sin(rad)*r, TFT_DARKGREY);
+    spr.drawPixel(centerX + cos(rad)*r, centerY + 15 + sin(rad)*r, TFT_DARKGREY);
   }
-  spr.drawLine(centerX - 90, centerY + 30, centerX + 90, centerY + 30, spr.color565(100,50,0));
+  // Draw Night Arc (bottom half)
+  for(int a=0; a<180; a+=2) {
+    float rad = a * M_PI / 180.0;
+    spr.drawPixel(centerX + cos(rad)*r, centerY + 15 + sin(rad)*r, spr.color565(0, 0, 100));
+  }
+  spr.drawLine(centerX - 90, centerY + 15, centerX + 90, centerY + 15, spr.color565(100,50,0));
   
   spr.setTextSize(1);
   spr.setTextColor(TFT_WHITE);
-  spr.drawString(sunriseTimeStr, centerX - 80, centerY + 45);
-  spr.drawString(sunsetTimeStr, centerX + 80, centerY + 45);
+  spr.drawString(sunriseTimeStr, centerX - 80, centerY + 30);
+  spr.drawString(sunsetTimeStr, centerX + 80, centerY + 30);
   
-  float angle = 180.0 + (sun_progress * 180.0);
-  if (angle > 360.0) angle = 360.0;
-  float rad = angle * M_PI / 180.0;
-  int sx = centerX + cos(rad)*r;
-  int sy = centerY + 30 + sin(rad)*r;
+  // Calculate Sun position (sun_progress goes from 0.0 to 1.0)
+  float sun_angle = 180.0 + (sun_progress * 360.0);
+  if (sun_angle > 360.0) sun_angle -= 360.0;
   
-  if (sun_progress > 0.0 && sun_progress < 1.0) {
-    spr.fillCircle(sx, sy, 8, TFT_YELLOW);
-    spr.drawCircle(sx, sy, 10, TFT_ORANGE);
-  } else {
-    spr.fillCircle(sx, sy, 5, TFT_DARKGREY);
-  }
+  float sun_rad = sun_angle * M_PI / 180.0;
+  int sx = centerX + cos(sun_rad)*r;
+  int sy = centerY + 15 + sin(sun_rad)*r;
+  
+  // Calculate Moon position based on Sun and Phase
+  float moon_fraction = getMoonPhaseFraction(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+  float moon_angle = sun_angle - (moon_fraction * 360.0);
+  if (moon_angle < 0.0) moon_angle += 360.0;
+  
+  float moon_rad = moon_angle * M_PI / 180.0;
+  int mx = centerX + cos(moon_rad)*r;
+  int my = centerY + 15 + sin(moon_rad)*r;
+  
+  // Draw Moon
+  spr.fillCircle(mx, my, 7, TFT_LIGHTGREY);
+  spr.drawCircle(mx, my, 7, TFT_WHITE);
+  
+  // Draw Sun
+  spr.fillCircle(sx, sy, 8, TFT_YELLOW);
+  spr.drawCircle(sx, sy, 10, TFT_ORANGE);
   
   spr.pushSprite(0, 0);
 }

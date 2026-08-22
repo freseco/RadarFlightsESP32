@@ -69,3 +69,23 @@ int getMoonPhase(int year, int month, int day) {
   }
   return b; // 0-7
 }
+
+float getMoonPhaseFraction(int year, int month, int day) {
+  int c = 0;
+  int e = 0;
+  double jd = 0;
+  
+  if (month < 3) {
+    year--;
+    month += 12;
+  }
+  ++month;
+  c = 365.25 * year;
+  e = 30.6 * month;
+  jd = c + e + day - 694039.09; 
+  jd /= 29.5305882; 
+  int b = (int)jd; 
+  jd -= b; 
+  
+  return (float)jd; // 0.0 to 1.0
+}

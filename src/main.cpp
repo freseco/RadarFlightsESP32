@@ -236,7 +236,21 @@ void nextState() {
     if (currentState == STATE_RADAR && pref_show_radar) enabled = true;
     else if (currentState == STATE_TIME && pref_show_time) enabled = true;
     else if (currentState == STATE_WEATHER && pref_show_weather) enabled = true;
-    else if (currentState == STATE_MOON && pref_show_moon) enabled = true;
+    else if (currentState == STATE_MOON && pref_show_moon) {
+      enabled = true;
+      struct tm timeinfo;
+      if (getLocalTime(&timeinfo)) {
+        float sun_angle = 180.0 + (sun_progress * 360.0);
+        if (sun_angle > 360.0) sun_angle -= 360.0;
+        float moon_fraction = getMoonPhaseFraction(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
+        float moon_angle = sun_angle - (moon_fraction * 360.0);
+        if (moon_angle < 0.0) moon_angle += 360.0;
+        // Moon is visible if its angle is on the top half (180 to 360 degrees)
+        if (moon_angle < 180.0 || moon_angle > 360.0) {
+          enabled = false;
+        }
+      }
+    }
     else if (currentState == STATE_HORIZON && pref_show_horizon) enabled = true;
     else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
     else if (currentState == STATE_SUN && pref_show_sun) enabled = true;

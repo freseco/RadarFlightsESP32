@@ -328,9 +328,15 @@ void fetchSunTimes() {
             struct tm now_tm;
             if (getLocalTime(&now_tm)) {
                int now_mins = now_tm.tm_hour * 60 + now_tm.tm_min;
-               if (now_mins < sr_mins) sun_progress = 0.0;
-               else if (now_mins > ss_mins) sun_progress = 1.0;
-               else sun_progress = (float)(now_mins - sr_mins) / (float)(ss_mins - sr_mins);
+               if (now_mins >= sr_mins && now_mins <= ss_mins) {
+                 // Day time (0.0 to 0.5)
+                 sun_progress = ((float)(now_mins - sr_mins) / (float)(ss_mins - sr_mins)) * 0.5;
+               } else {
+                 // Night time (0.5 to 1.0)
+                 int night_elapsed = (now_mins > ss_mins) ? (now_mins - ss_mins) : ((1440 - ss_mins) + now_mins);
+                 int night_total = (1440 - ss_mins) + sr_mins;
+                 sun_progress = 0.5 + ((float)night_elapsed / (float)night_total) * 0.5;
+               }
             }
           }
         }
