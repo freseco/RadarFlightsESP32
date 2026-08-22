@@ -32,10 +32,11 @@ const char* htmlForm = R"=====(
   <h2>⚙️ Ajustes del Radar</h2>
   <p class="sub">Configura tu dispositivo</p>
   <form action='/save' method='POST'>
-    <select id='langSelect' name='lang' onchange='changeLang(this.value)' style='margin-bottom: 20px;'>
-      <option value='es' %LANG_ES%>🇪🇸 Español</option>
-      <option value='en' %LANG_EN%>🇬🇧 English</option>
-    </select>
+  <div style='position: absolute; top: 20px; right: 20px; font-size: 28px; cursor: pointer;'>
+    <span id='flag_es' onclick='document.getElementById("langHidden").value="es"; changeLang("es"); document.getElementById("flag_es").style.opacity="1"; document.getElementById("flag_en").style.opacity="0.3";' style='%OPACITY_ES% margin-right: 10px;'>🇪🇸</span>
+    <span id='flag_en' onclick='document.getElementById("langHidden").value="en"; changeLang("en"); document.getElementById("flag_en").style.opacity="1"; document.getElementById("flag_es").style.opacity="0.3";' style='%OPACITY_EN%'>🇬🇧</span>
+  </div>
+  <input type='hidden' name='lang' id='langHidden' value='%LANG_VAL%'>
     <details>
       <summary>📶 Conexión WiFi</summary>
       <label>🌐 Red WiFi (Nombre):</label>
@@ -446,8 +447,9 @@ void handleRoot() {
   }
   html.replace("%WIFI_OPTIONS%", wifiOptions);
   
-  html.replace("%LANG_ES%", pref_lang == "es" ? "selected" : "");
-  html.replace("%LANG_EN%", pref_lang == "en" ? "selected" : "");
+  html.replace("%OPACITY_ES%", pref_lang == "es" ? "opacity: 1.0;" : "opacity: 0.3;");
+  html.replace("%OPACITY_EN%", pref_lang == "en" ? "opacity: 1.0;" : "opacity: 0.3;");
+  html.replace("%LANG_VAL%", pref_lang);
   html.replace("%SSID%", pref_ssid);
   html.replace("%PASS%", pref_pass);
   html.replace("%LAT%", String(pref_lat, 4));
