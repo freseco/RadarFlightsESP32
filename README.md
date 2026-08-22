@@ -7,9 +7,9 @@
   <br><br>
   <!-- GitHub no soporta la etiqueta <video> directamente, así que usamos un enlace con una imagen en su lugar -->
   <a href="https://github.com/freseco/RadarFlightsESP32/raw/main/images/4.mp4">
-    <img src="images/1.jpg" width="60%" alt="Haz clic para ver el vídeo de demostración" />
+    <img src="images/1.jpg" width="30%" alt="Haz clic para ver el vídeo de demostración" style="border: 2px solid #555; border-radius: 10px;" />
     <br>
-    <b>▶️ Haz clic aquí para ver el vídeo de demostración</b>
+    <b style="font-size: 1.2em;">🎬 Ver demostración en vídeo ▶️</b>
   </a>
 </div>
 
