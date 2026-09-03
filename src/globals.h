@@ -99,11 +99,14 @@ extern int pref_radar_time_s;
 // ISS Data
 extern float iss_lat;
 extern float iss_lon;
+extern float iss_last_lat;
+extern float iss_last_lon;
 extern unsigned long lastIssFetch;
 
 // Sun Data
 extern String sunriseTimeStr;
 extern String sunsetTimeStr;
+extern String solarNoonTimeStr;
 extern float sun_progress;
 extern unsigned long lastSunFetch;
 

@@ -42,7 +42,7 @@ void networkTask(void *pvParameters) {
       lastFetchTime = millis();
     }
     
-    if (now - lastIssFetch > 60000 || lastIssFetch == 0) {
+    if (now - lastIssFetch > 15000 || lastIssFetch == 0) {
       if (WiFi.status() == WL_CONNECTED) {
         fetchISSLocation();
       }
@@ -366,14 +366,12 @@ void loop() {
       ghostTrail.clear();
       ghostTrailEndTime = 0;
 
-      int side = random(4);
+      int side = random(2);
       float speed = (float)pref_ghost_speed;
       float startX, startY, endX, endY;
 
-      if (side == 0) { startX = random(40, 200); startY = -20;  endX = random(40, 200); endY = 260; }
-      else if (side == 1) { startX = 260; startY = random(40, 200); endX = -20;  endY = random(40, 200); }
-      else if (side == 2) { startX = random(40, 200); startY = 260;  endX = random(40, 200); endY = -20; }
-      else               { startX = -20; startY = random(40, 200); endX = 260;  endY = random(40, 200); }
+      if (side == 0) { startX = -40; startY = random(40, 200); endX = 280;  endY = random(40, 200); }
+      else           { startX = 280; startY = random(40, 200); endX = -40;  endY = random(40, 200); }
 
       ghostX = startX; ghostY = startY;
       float dx = endX - startX;

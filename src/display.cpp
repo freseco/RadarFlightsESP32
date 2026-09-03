@@ -417,8 +417,8 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
 
   // CPU temperature on the left side of the clock face
   spr.setTextColor(spr.color565(255, 150, 150), faceColor);
-  spr.drawString("CPU", centerX - 55, centerY - 8);
-  spr.drawString(String((int)temperatureRead()) + "\xF7", centerX - 55, centerY + 8);
+  spr.drawString("CPU", centerX - 45, centerY - 8);
+  spr.drawString(String((int)temperatureRead()) + "\xF7" + "C", centerX - 45, centerY + 8);
 
   spr.pushSprite(0, 0);
 }
@@ -554,8 +554,8 @@ void drawAnalog24hTimeUI(struct tm* timeinfo) {
 
   // CPU temperature on the left side of the clock face
   spr.setTextColor(spr.color565(255, 150, 150), faceColor);
-  spr.drawString("CPU", centerX - 55, centerY - 8);
-  spr.drawString(String((int)temperatureRead()) + "\xF7", centerX - 55, centerY + 8);
+  spr.drawString("CPU", centerX - 45, centerY - 8);
+  spr.drawString(String((int)temperatureRead()) + "\xF7" + "C", centerX - 45, centerY + 8);
 
   spr.pushSprite(0, 0);
 }
@@ -1242,6 +1242,30 @@ void drawISS() {
 
   spr.drawBitmap(mapX, mapY, world_map_bitmap, WORLD_MAP_WIDTH, WORLD_MAP_HEIGHT, spr.color565(0, 100, 0));
 
+  // ── Órbita teórica de la ISS ──────────────────────────────────────────────
+  if (iss_lat != 0.0) {
+    // La inclinación de la ISS es aprox 51.6 grados
+    float val = asin(constrain(iss_lat / 51.6, -1.0, 1.0));
+    float phase;
+    // Determinar si es nodo ascendente o descendente comparando con la última lectura
+    if (iss_lat >= iss_last_lat) {
+      phase = (iss_lon * M_PI / 180.0) - val;
+    } else {
+      phase = (iss_lon * M_PI / 180.0) - (M_PI - val);
+    }
+
+    uint16_t orbitColor = spr.color565(80, 80, 80);
+    for (int x = 0; x < WORLD_MAP_WIDTH; x++) {
+      if (x % 3 == 0) { // Línea punteada
+        float l_lon = (x / (float)WORLD_MAP_WIDTH) * 360.0 - 180.0;
+        float l_lat = 51.6 * sin((l_lon * M_PI / 180.0) - phase);
+        int px = mapX + x;
+        int py = mapY + ((90.0 - l_lat) / 180.0) * WORLD_MAP_HEIGHT;
+        spr.fillCircle(px, py, 1, orbitColor);
+      }
+    }
+  }
+
   // Posición del usuario (punto verde)
   int hX = (int)(mapX + ((pref_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH);
   int hY = (int)(mapY + ((90.0 - pref_lat) / 180.0) * WORLD_MAP_HEIGHT);
@@ -1385,6 +1409,9 @@ void drawSunArc(struct tm* timeinfo) {
   spr.setTextColor(TFT_WHITE);
   spr.drawString(sunriseTimeStr, centerX - 80, centerY + 30);
   spr.drawString(sunsetTimeStr, centerX + 80, centerY + 30);
+  
+  spr.setTextColor(TFT_YELLOW);
+  spr.drawString("Zenit: " + solarNoonTimeStr, centerX, centerY - 15);
   
   // Calculate Sun position (sun_progress goes from 0.0 to 1.0)
   float sun_angle = 180.0 + (sun_progress * 360.0);

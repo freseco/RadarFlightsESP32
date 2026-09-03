@@ -273,17 +273,24 @@ void fetchAemetWeather() {
 void fetchISSLocation() {
   if (WiFi.status() != WL_CONNECTED) return;
   HTTPClient http;
-  WiFiClient client;
-  http.begin(client, "http://api.open-notify.org/iss-now.json");
+  WiFiClientSecure client;
+  client.setInsecure(); // wheretheiss.at uses HTTPS
+  http.begin(client, "https://api.wheretheiss.at/v1/satellites/25544");
+  http.setUserAgent("RadarFlightsESP32/1.0");
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(5000);
   int code = http.GET();
   if (code == HTTP_CODE_OK) {
     String payload = http.getString();
     JsonDocument doc;
     if (!deserializeJson(doc, payload)) {
-      if (doc["message"] == "success") {
-        iss_lat = doc["iss_position"]["latitude"].as<float>();
-        iss_lon = doc["iss_position"]["longitude"].as<float>();
+      if (doc.containsKey("latitude") && doc.containsKey("longitude")) {
+        if (iss_lat != 0.0) {
+          iss_last_lat = iss_lat;
+          iss_last_lon = iss_lon;
+        }
+        iss_lat = doc["latitude"].as<float>();
+        iss_lon = doc["longitude"].as<float>();
       }
     }
   }
@@ -375,6 +382,7 @@ void fetchSunTimes() {
       if (doc["status"] == "OK") {
         String sr = doc["results"]["sunrise"].as<String>();
         String ss = doc["results"]["sunset"].as<String>();
+        String sn = doc["results"]["solar_noon"].as<String>();
         
         int y, M, d, h, m, s;
         if (sscanf(sr.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
@@ -386,6 +394,15 @@ void fetchSunTimes() {
           sunriseTimeStr = String(buf);
           int sr_mins = h * 60 + m;
           
+          if (sscanf(sn.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
+            h += (pref_offset / 3600);
+            if (pref_dst) h += 1;
+            if (h >= 24) h -= 24; else if (h < 0) h += 24;
+            char buf[10];
+            sprintf(buf, "%02d:%02d", h, m);
+            solarNoonTimeStr = String(buf);
+          }
+
           if (sscanf(ss.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
             h += (pref_offset / 3600);
             if (pref_dst) h += 1;

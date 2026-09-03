@@ -33,10 +33,13 @@ int pref_radar_time_s = 30;
 
 float iss_lat = 0.0;
 float iss_lon = 0.0;
+float iss_last_lat = 0;
+float iss_last_lon = 0;
 unsigned long lastIssFetch = 0;
 
 String sunriseTimeStr = "--:--";
 String sunsetTimeStr = "--:--";
+String solarNoonTimeStr = "--:--";
 float sun_progress = 0.0;
 unsigned long lastSunFetch = 0;
 
