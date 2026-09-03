@@ -77,6 +77,13 @@ void nextState();
 
 extern String pref_aemet_key;
 extern String pref_idema;
+extern String pref_n2yo_key;
+
+// ISS Pass Prediction
+extern long    iss_next_pass_time;     // Unix timestamp UTC del próximo paso
+extern int     iss_next_pass_max_el;   // Elevación máxima en grados
+extern int     iss_next_pass_duration; // Duración en segundos
+extern unsigned long lastIssPassFetch;
 
 // Screen Toggles
 extern bool pref_show_radar;

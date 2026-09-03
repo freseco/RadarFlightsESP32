@@ -117,6 +117,13 @@ const char* htmlForm = R"=====(
     </details>
 
     <details>
+      <summary>🛸 ISS Tracker (n2yo.com)</summary>
+      <label>🔑 API Key de n2yo.com (gratis en n2yo.com/login):</label>
+      <input type='text' name='n2yo_key' value='%N2YO_KEY%' placeholder='Tu API key de n2yo.com'>
+      <small style='color:#aaa'>Registrate gratis en <a href='https://www.n2yo.com/login/' target='_blank' style='color:#6af'>n2yo.com</a> para obtener la key y ver cuándo será visible la ISS.</small>
+    </details>
+
+    <details>
       <summary>🕒 Hora y Fecha</summary>
       <label>🕒 Zona Horaria (Horas desde UTC):</label>
       <input type='number' step='1' name='utc_offset' value='%UTC_OFFSET%'>
@@ -463,6 +470,7 @@ void handleRoot() {
   html.replace("%MAXP%", String(pref_max_planes));
   html.replace("%AEMET_KEY%", pref_aemet_key);
   html.replace("%AEMET_IDEMA%", pref_idema);
+  html.replace("%N2YO_KEY%", pref_n2yo_key);
   html.replace("%UTC_OFFSET%", String(pref_offset / 3600));
   html.replace("%DST_ON%", pref_dst ? "selected" : "");
   html.replace("%DST_OFF%", !pref_dst ? "selected" : "");
@@ -593,6 +601,11 @@ void handleSave() {
   preferences.putString("airport_id", server.arg("airport_id"));
   preferences.putString("aemet_key", server.arg("aemet_key"));
   preferences.putString("aemet_idema", server.arg("aemet_idema"));
+  if (server.hasArg("n2yo_key")) {
+    preferences.putString("n2yo_key", server.arg("n2yo_key"));
+    pref_n2yo_key = server.arg("n2yo_key");
+    lastIssPassFetch = 0; // Forzar reconsulta inmediata
+  }
   
   if (server.hasArg("utc_offset")) {
     preferences.putLong("offset", server.arg("utc_offset").toInt() * 3600);

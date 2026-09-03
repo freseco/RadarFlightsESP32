@@ -7,6 +7,7 @@
 
 void fetchAirplanes();
 void fetchISSLocation();
+void fetchISSPass();
 void fetchSunTimes();
 void findClosestAemetStation();
 void fetchAemetWeather();

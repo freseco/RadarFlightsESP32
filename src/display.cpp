@@ -560,10 +560,241 @@ void drawAnalog24hTimeUI(struct tm* timeinfo) {
   spr.pushSprite(0, 0);
 }
 
+// ─── Animaciones pantalla lunar ──────────────────────────────────────────────
+
+// Estructura para una estrella fugaz
+struct ShootingStar {
+  float x, y;       // posición cabeza
+  float vx, vy;     // velocidad
+  int   len;        // longitud estela (px)
+  bool  active;
+  unsigned long startMs;
+  unsigned long durationMs;
+};
+
+// Cohete/transbordador cruzando la pantalla
+struct Rocket {
+  float x, y;
+  float vx, vy;
+  bool  active;
+  unsigned long startMs;
+  unsigned long durationMs;
+};
+
+static ShootingStar mShoot[3];
+static Rocket       mRocket;
+static bool         moonAnimInit = false;
+
+static void initMoonAnimations() {
+  for (int i = 0; i < 3; i++) {
+    mShoot[i].active = false;
+  }
+  mRocket.active = false;
+  moonAnimInit = true;
+}
+
+// Pseudo-random basado en millis() + semilla variable
+static uint32_t moonRandSeed = 42;
+static uint32_t moonRand() {
+  moonRandSeed ^= moonRandSeed << 13;
+  moonRandSeed ^= moonRandSeed >> 17;
+  moonRandSeed ^= moonRandSeed << 5;
+  return moonRandSeed;
+}
+
+static void updateMoonAnimations(unsigned long now) {
+  // Reactivar estrellas fugaces
+  for (int i = 0; i < 3; i++) {
+    if (!mShoot[i].active) {
+      // Esperar un intervalo aleatorio (3-8 s) antes de lanzar otra
+      unsigned long wait = 3000 + (moonRand() % 5000);
+      if (now - mShoot[i].startMs > wait) {
+        // Ángulo: de izquierda-arriba hacia derecha-abajo, ±30°
+        // Siempre en la zona de cielo (evitar luna)
+        mShoot[i].x  = (float)(moonRand() % 200) + 10.0f;   // 10..210
+        mShoot[i].y  = (float)(moonRand() % 60)  + 5.0f;    // 5..65
+        float speed  = 3.0f + (moonRand() % 40) * 0.1f;     // 3..7 px/frame
+        mShoot[i].vx = speed;
+        mShoot[i].vy = speed * (0.3f + (moonRand() % 7) * 0.1f); // pendiente suave
+        mShoot[i].len = 12 + (moonRand() % 16);
+        mShoot[i].active    = true;
+        mShoot[i].startMs   = now;
+        mShoot[i].durationMs = 800 + (moonRand() % 600);
+      }
+    } else {
+      // Comprobar si ha terminado (salió de pantalla o timeout)
+      if (mShoot[i].x > 240 || mShoot[i].y > 240 ||
+          now - mShoot[i].startMs > mShoot[i].durationMs) {
+        mShoot[i].active  = false;
+        mShoot[i].startMs = now; // reset timer de espera
+      }
+    }
+  }
+
+  // Cohete/transbordador
+  if (!mRocket.active) {
+    unsigned long wait = 6000 + (moonRand() % 8000); // 6-14 s entre cohetes
+    if (now - mRocket.startMs > wait) {
+      // Sentido aleatorio: izq->der o der->izq, siempre por zona de cielo
+      bool ltr = (moonRand() % 2) == 0;
+      mRocket.y  = 10.0f + (moonRand() % 50);         // fila 10..60
+      mRocket.x  = ltr ? -20.0f : 260.0f;
+      mRocket.vx = ltr ?  2.8f  : -2.8f;
+      mRocket.vy = ltr ? 0.4f : -0.4f;
+      mRocket.active    = true;
+      mRocket.startMs   = now;
+      mRocket.durationMs = 5000;
+    }
+  } else {
+    // Avanzar posición
+    mRocket.x += mRocket.vx;
+    mRocket.y += mRocket.vy;
+    if (mRocket.x > 260 || mRocket.x < -20 ||
+        now - mRocket.startMs > mRocket.durationMs) {
+      mRocket.active  = false;
+      mRocket.startMs = now;
+    }
+  }
+
+  // Avanzar posición de estrellas fugaces activas
+  for (int i = 0; i < 3; i++) {
+    if (mShoot[i].active) {
+      mShoot[i].x += mShoot[i].vx;
+      mShoot[i].y += mShoot[i].vy;
+    }
+  }
+}
+
+static void drawShootingStars() {
+  for (int i = 0; i < 3; i++) {
+    if (!mShoot[i].active) continue;
+    float hx = mShoot[i].x;
+    float hy = mShoot[i].y;
+    float dx = -mShoot[i].vx;
+    float dy = -mShoot[i].vy;
+    float mag = sqrtf(dx * dx + dy * dy);
+    if (mag == 0) continue;
+    dx /= mag; dy /= mag;
+
+    int len = mShoot[i].len;
+    for (int s = 0; s < len; s++) {
+      uint8_t brightness = (uint8_t)(255 * (1.0f - (float)s / len));
+      uint16_t col = spr.color565(brightness, brightness, brightness);
+      int px = (int)(hx + dx * s);
+      int py = (int)(hy + dy * s);
+      if (px >= 0 && px < 240 && py >= 0 && py < 240)
+        spr.drawPixel(px, py, col);
+    }
+  }
+}
+
+// Dibuja un cohete/transbordador grande (píxeles de 2×2, ~28×12 px total)
+static void drawRocket(float x, float y, bool leftToRight) {
+  int ix = (int)x;
+  int iy = (int)y;
+  uint16_t white   = spr.color565(255, 255, 255);
+  uint16_t ltgray  = spr.color565(210, 210, 210);
+  uint16_t gray    = spr.color565(150, 150, 150);
+  uint16_t dkgray  = spr.color565(90,  90,  90);
+  uint16_t orange  = spr.color565(255, 150,  0);
+  uint16_t yellow  = spr.color565(255, 240,  0);
+  uint16_t red     = spr.color565(220,  40, 40);
+  uint16_t blue    = spr.color565(80,  170, 255);
+  uint16_t lblue   = spr.color565(160, 210, 255);
+
+  // Cada "celda lógica" = bloque de 2×2 px
+  auto cell = [&](int cx, int cy, uint16_t c) {
+    int rx = leftToRight ? ix + cx * 2 : ix - cx * 2;
+    int ry = iy + cy * 2;
+    for (int dy = 0; dy < 2; dy++)
+      for (int ddx = 0; ddx < 2; ddx++) {
+        int fx = leftToRight ? rx + ddx : rx - ddx;
+        int fy = ry + dy;
+        if (fx >= 0 && fx < 240 && fy >= 0 && fy < 240)
+          spr.drawPixel(fx, fy, c);
+      }
+  };
+
+  // Mapa del cohete (columna × fila, 0-indexed), fila 0 = arriba
+  // 14 cols × 6 filas lógicas → 28×12 px reales
+  //
+  //  Fila 0:          _ _ W W _ _ _ A A _ _ _ _ _
+  //  Fila 1:        _ W W W W W W W A A W W _ _ _
+  //  Fila 2:      W W W W B B W W W W W W G G F F
+  //  Fila 3:      _ W W W W W W W A A W W _ _ _ _
+  //  Fila 4:          _ _ W W _ _ _ A A _ _ _ _ _
+  //
+  // W=white, G=gray, A=ltgray, B=blue, F=flame
+
+  // Nariz (punta delantera)
+  cell(0, 2, white);
+  cell(1, 1, white); cell(1, 2, white); cell(1, 3, white);
+  cell(2, 1, ltgray); cell(2, 2, white); cell(2, 3, ltgray);
+
+  // Cuerpo principal
+  for (int c = 3; c <= 9; c++) {
+    cell(c, 1, ltgray);
+    cell(c, 2, white);
+    cell(c, 3, ltgray);
+  }
+
+  // Ventanilla (cockpit)
+  cell(4, 2, lblue);
+  cell(5, 2, blue);
+  cell(6, 2, lblue);
+
+  // Aleta superior
+  cell(7, 0, gray);
+  cell(8, 0, gray);
+  cell(9, 0, dkgray);
+
+  // Aleta inferior
+  cell(7, 4, gray);
+  cell(8, 4, gray);
+  cell(9, 4, dkgray);
+
+  // Sección motor / cola
+  cell(10, 1, gray); cell(10, 2, gray); cell(10, 3, gray);
+  cell(11, 1, dkgray); cell(11, 2, dkgray); cell(11, 3, dkgray);
+
+  // Llama animada con parpadeo
+  unsigned long t = millis();
+  int phase = (t / 70) % 4;
+  switch (phase) {
+    case 0:
+      cell(12, 2, orange);
+      cell(13, 2, yellow);
+      cell(14, 2, orange);
+      break;
+    case 1:
+      cell(12, 1, orange); cell(12, 2, red);    cell(12, 3, orange);
+      cell(13, 2, orange);
+      cell(14, 2, yellow);
+      break;
+    case 2:
+      cell(12, 2, yellow);
+      cell(13, 1, orange); cell(13, 2, orange); cell(13, 3, orange);
+      cell(14, 2, red);
+      break;
+    case 3:
+      cell(12, 1, orange); cell(12, 2, orange); cell(12, 3, orange);
+      cell(13, 2, red);
+      cell(14, 2, orange);
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 void drawMoonUI(struct tm* timeinfo) {
+  if (!moonAnimInit) initMoonAnimations();
+
+  unsigned long now = millis();
+  updateMoonAnimations(now);
+
   spr.fillSprite(TFT_BLACK);
   
-  // Dibujar estrellas animadas
+  // Dibujar estrellas de fondo animadas (parpadeo)
   static const int stars[][2] = {
     {30, 40}, {70, 25}, {200, 30}, {180, 80}, {40, 150},
     {210, 160}, {60, 200}, {190, 210}, {20, 100}, {220, 110},
@@ -573,11 +804,11 @@ void drawMoonUI(struct tm* timeinfo) {
   for (int i = 0; i < 15; i++) {
     int sx = stars[i][0];
     int sy = stars[i][1];
-    float t = millis() / (400.0 + i * 70.0) + i; 
+    float t = now / (400.0 + i * 70.0) + i; 
     uint8_t b = 50 + 205 * (sin(t) + 1.0) / 2.0; 
     
     spr.drawPixel(sx, sy, spr.color565(b, b, b));
-    if (i % 3 == 0) { // Algunas estrellas con un pequeño halo
+    if (i % 3 == 0) {
       uint8_t halfB = b / 2;
       uint16_t haloColor = spr.color565(halfB, halfB, halfB);
       spr.drawPixel(sx+1, sy, haloColor);
@@ -587,6 +818,15 @@ void drawMoonUI(struct tm* timeinfo) {
     }
   }
 
+  // Estrellas fugaces
+  drawShootingStars();
+
+  // Cohete/transbordador
+  if (mRocket.active) {
+    drawRocket(mRocket.x, mRocket.y, mRocket.vx > 0);
+  }
+
+  // ── Luna ──────────────────────────────────────────────────────────────────
   int phase = getMoonPhase(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
   
   String phaseName = "";
@@ -632,7 +872,7 @@ void drawMoonUI(struct tm* timeinfo) {
       break;
   }
 
-  // Dibujar un borde para que se vea la luna nueva
+  // Borde para que se vea la luna nueva
   spr.drawCircle(mX, mY, mR, spr.color565(100, 100, 100));
 
   spr.setTextDatum(MC_DATUM);
@@ -989,43 +1229,136 @@ void drawArtificialHorizon() {
 
 void drawISS() {
   spr.fillSprite(TFT_BLACK);
-  
+
+  // ── Título ────────────────────────────────────────────────────────────────
   spr.setTextDatum(MC_DATUM);
-  spr.setTextColor(TFT_WHITE);
+  spr.setTextColor(spr.color565(0, 200, 255));
   spr.setTextSize(2);
-  spr.drawString("ISS TRACKER", centerX, 30);
-  
+  spr.drawString("ISS TRACKER", centerX, 26);
+
+  // ── Mapa mundial centrado ─────────────────────────────────────────────────
   int mapX = centerX - (WORLD_MAP_WIDTH / 2);
   int mapY = centerY - (WORLD_MAP_HEIGHT / 2);
-  
-  // Draw the world map
+
   spr.drawBitmap(mapX, mapY, world_map_bitmap, WORLD_MAP_WIDTH, WORLD_MAP_HEIGHT, spr.color565(0, 100, 0));
-  
-  // Draw user's location (Home)
-  float hX = mapX + ((pref_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH;
-  float hY = mapY + ((90.0 - pref_lat) / 180.0) * WORLD_MAP_HEIGHT;
+
+  // Posición del usuario (punto verde)
+  int hX = (int)(mapX + ((pref_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH);
+  int hY = (int)(mapY + ((90.0 - pref_lat) / 180.0) * WORLD_MAP_HEIGHT);
   spr.fillCircle(hX, hY, 3, TFT_GREEN);
-  
-  // Draw ISS location
-  float iX = mapX + ((iss_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH;
-  float iY = mapY + ((90.0 - iss_lat) / 180.0) * WORLD_MAP_HEIGHT;
-  spr.fillCircle(iX, iY, 4, TFT_RED);
-  spr.drawCircle(iX, iY, 8, TFT_RED);
-  
-  // Draw crosshair centered on ISS
-  spr.drawLine(iX - 12, iY, iX + 12, iY, TFT_RED);
-  spr.drawLine(iX, iY - 12, iX, iY + 12, TFT_RED);
-  
-  float dy = iss_lat - pref_lat;
-  float dx = iss_lon - pref_lon;
-  float dist = sqrt(dx*dx + dy*dy) * 111.0;
-  
-  spr.setTextSize(2);
-  spr.setTextColor(TFT_YELLOW);
-  spr.drawString(String((int)dist) + " KM", centerX, 210);
-  
+
+  // Posición de la ISS en el mapa
+  int iX = (int)(mapX + ((iss_lon + 180.0) / 360.0) * WORLD_MAP_WIDTH);
+  int iY = (int)(mapY + ((90.0 - iss_lat) / 180.0) * WORLD_MAP_HEIGHT);
+
+  // ── Silueta ISS en su posición del mapa ──────────────────────────────────
+  // Tamaño: truss de 24 px, paneles de 5×4 px. Centro = (iX, iY)
+  uint16_t silver = spr.color565(210, 210, 220);
+  uint16_t gold   = spr.color565(220, 185,  30);
+  uint16_t dkgold = spr.color565(130, 100,  10);
+  uint16_t lgray  = spr.color565(180, 180, 190);
+  uint16_t cyan   = spr.color565(0,   210, 255);
+
+  // Halo pulsante animado
+  unsigned long now_ms = millis();
+  uint8_t glow = (uint8_t)(40 + 40 * sin(now_ms / 600.0));
+  uint16_t glowCol = spr.color565(0, glow, glow + 40);
+  spr.drawCircle(iX, iY, 10, glowCol);
+
+  // Truss horizontal
+  spr.drawLine(iX - 12, iY, iX + 12, iY, silver);
+  spr.drawLine(iX - 12, iY + 1, iX + 12, iY + 1, silver);
+
+  // Módulo central (body)
+  spr.fillRect(iX - 5, iY - 3, 10, 7, lgray);
+  spr.drawRect(iX - 5, iY - 3, 10, 7, silver);
+  // Ventanilla
+  spr.fillRect(iX - 2, iY - 1, 4, 3, cyan);
+
+  // Panel solar izquierdo superior
+  spr.fillRect(iX - 12, iY - 5, 6, 4, gold);
+  spr.drawRect(iX - 12, iY - 5, 6, 4, dkgold);
+  // Panel solar izquierdo inferior
+  spr.fillRect(iX - 12, iY + 2, 6, 4, gold);
+  spr.drawRect(iX - 12, iY + 2, 6, 4, dkgold);
+
+  // Panel solar derecho superior
+  spr.fillRect(iX + 6,  iY - 5, 6, 4, gold);
+  spr.drawRect(iX + 6,  iY - 5, 6, 4, dkgold);
+  // Panel solar derecho inferior
+  spr.fillRect(iX + 6,  iY + 2, 6, 4, gold);
+  spr.drawRect(iX + 6,  iY + 2, 6, 4, dkgold);
+
+  // ── Coordenadas y distancia ───────────────────────────────────────────────
+  float dy_d = iss_lat - pref_lat;
+  float dx_d = iss_lon - pref_lon;
+  float dist  = sqrt(dx_d * dx_d + dy_d * dy_d) * 111.0;
+
+  spr.setTextSize(1);
+  spr.setTextColor(spr.color565(160, 160, 160));
+  char coordBuf[32];
+  snprintf(coordBuf, sizeof(coordBuf), "%.1f%c %.1f%c  %.0fkm",
+           fabs(iss_lat), iss_lat >= 0 ? 'N' : 'S',
+           fabs(iss_lon), iss_lon >= 0 ? 'E' : 'W',
+           dist);
+  spr.drawString(coordBuf, centerX, 197);
+
+  // ── Próximo paso visible ───────────────────────────────────────────────────
+  if (pref_n2yo_key == "") {
+    spr.setTextColor(spr.color565(100, 100, 100));
+    spr.drawString(tr("Configura n2yo key", "Set n2yo key"), centerX, 210);
+    spr.drawString(tr("para ver proximos pasos", "to see next passes"), centerX, 221);
+  } else if (iss_next_pass_time == 0) {
+    spr.setTextColor(spr.color565(100, 150, 100));
+    spr.drawString(tr("Buscando paso...", "Looking for pass..."), centerX, 212);
+  } else if (iss_next_pass_time == -1) {
+    spr.setTextColor(spr.color565(130, 130, 130));
+    spr.drawString(tr("No visible en 2 dias", "Not visible in 2 days"), centerX, 212);
+  } else {
+    // Calcular segundos hasta el paso (convertir timestamp UTC a local)
+    struct tm now_tm;
+    long secsLeft = 0;
+    if (getLocalTime(&now_tm, 10)) {
+      time_t local_unix = mktime(&now_tm);
+      time_t now_utc    = local_unix - pref_offset - (pref_dst ? 3600 : 0);
+      secsLeft = (long)iss_next_pass_time - (long)now_utc;
+    }
+
+    if (secsLeft <= 0) {
+      // Ya pasó o está pasando ahora
+      spr.setTextColor(spr.color565(0, 255, 100));
+      spr.drawString(tr(">> VISIBLE AHORA! <<", ">> VISIBLE NOW! <<"), centerX, 208);
+      char elBuf[24];
+      snprintf(elBuf, sizeof(elBuf), tr("Elev max %d", "Max elev %d").c_str(),
+               iss_next_pass_max_el);
+      spr.setTextColor(TFT_WHITE);
+      spr.drawString(elBuf, centerX, 220);
+    } else {
+      // Formatear tiempo restante
+      char timeBuf[32];
+      long h = secsLeft / 3600;
+      long m = (secsLeft % 3600) / 60;
+      if (h > 0)
+        snprintf(timeBuf, sizeof(timeBuf), tr("Prox paso: %ldh %ldm", "Next pass: %ldh %ldm").c_str(), h, m);
+      else
+        snprintf(timeBuf, sizeof(timeBuf), tr("Prox paso: %ldmin", "Next pass: %ldmin").c_str(), m);
+
+      spr.setTextColor(spr.color565(80, 200, 255));
+      spr.drawString(timeBuf, centerX, 208);
+
+      char elBuf[32];
+      snprintf(elBuf, sizeof(elBuf), tr("Elev %d  Dur %ds", "Elev %d  Dur %ds").c_str(),
+               iss_next_pass_max_el, iss_next_pass_duration);
+      spr.setTextColor(spr.color565(180, 180, 180));
+      spr.drawString(elBuf, centerX, 220);
+    }
+  }
+
   spr.pushSprite(0, 0);
+
 }
+
+
 
 void drawSunArc(struct tm* timeinfo) {
   spr.fillSprite(TFT_BLACK);

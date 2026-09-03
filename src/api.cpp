@@ -290,6 +290,75 @@ void fetchISSLocation() {
   http.end();
 }
 
+void fetchISSPass() {
+  if (pref_n2yo_key == "") {
+    iss_next_pass_time     = 0;
+    iss_next_pass_max_el   = 0;
+    iss_next_pass_duration = 0;
+    return;
+  }
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  // n2yo.com: próximos pasos visibles de la ISS (NORAD 25544) con elevación ≥10°
+  // Endpoint: /rest/v1/satellite/visualpasses/25544/{lat}/{lon}/{alt}/{days}/{minElevation}&apiKey={key}
+  String url = "https://api.n2yo.com/rest/v1/satellite/visualpasses/25544/"
+               + String(pref_lat, 4) + "/"
+               + String(pref_lon, 4) + "/0/2/10&apiKey=" + pref_n2yo_key;
+
+  Serial.println("Consultando pases ISS n2yo...");
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  http.begin(client, url);
+  http.setTimeout(10000);
+  int code = http.GET();
+
+  if (code == HTTP_CODE_OK) {
+    String payload = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      JsonArray passes = doc["passes"];
+      if (!passes.isNull() && passes.size() > 0) {
+        // Obtener tiempo actual UTC en Unix
+        struct tm now_tm;
+        time_t now_unix = 0;
+        if (getLocalTime(&now_tm, 10)) {
+          // Convertir a UTC restando el offset
+          struct tm utc_tm = now_tm;
+          time_t local_unix = mktime(&utc_tm);
+          now_unix = local_unix - pref_offset;
+          if (pref_dst) now_unix -= 3600;
+        }
+
+        // Buscar el primer paso que aún no haya empezado
+        for (JsonVariant p : passes) {
+          long startUTC = p["startUTC"].as<long>();
+          int maxEl     = p["maxEl"].as<int>();
+          int duration  = p["duration"].as<int>();
+          if (startUTC > now_unix) {
+            iss_next_pass_time     = startUTC;
+            iss_next_pass_max_el   = maxEl;
+            iss_next_pass_duration = duration;
+            Serial.printf("Proximo paso ISS: UTC %ld, elev max %d°, %ds\n",
+                          startUTC, maxEl, duration);
+            break;
+          }
+        }
+      } else {
+        // Sin pasos visibles en los próximos 2 días
+        iss_next_pass_time   = -1;
+        iss_next_pass_max_el = 0;
+        Serial.println("No hay pasos ISS visibles en 2 dias");
+      }
+    }
+  } else {
+    Serial.printf("Error n2yo: %d\n", code);
+    addErrorLog("n2yo ISS: HTTP " + String(code));
+  }
+  http.end();
+}
+
 void fetchSunTimes() {
   if (WiFi.status() != WL_CONNECTED) return;
   String url = "https://api.sunrise-sunset.org/json?lat=" + String(pref_lat, 4) + "&lng=" + String(pref_lon, 4) + "&formatted=0";

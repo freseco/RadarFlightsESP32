@@ -55,6 +55,13 @@ void networkTask(void *pvParameters) {
       }
       lastSunFetch = millis();
     }
+
+    if (now - lastIssPassFetch > 1800000 || lastIssPassFetch == 0) { // Every 30 min
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchISSPass();
+      }
+      lastIssPassFetch = millis();
+    }
     
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield para el Watchdog y otras tareas RTOS
   }
@@ -104,8 +111,9 @@ void setup() {
   pref_ghost_speed = preferences.getInt("ghost_speed", 150);
   pref_ghost_trail = preferences.getInt("ghost_trail", 100);
   pref_aemet_key = preferences.getString("aemet_key", "");
-  pref_idema = preferences.getString("aemet_idema", "");
-  
+  pref_idema     = preferences.getString("aemet_idema", "");
+  pref_n2yo_key  = preferences.getString("n2yo_key", "");
+
   pref_show_radar = preferences.getBool("sh_radar", true);
   pref_show_time = preferences.getBool("sh_time", true);
   pref_show_weather = preferences.getBool("sh_wea", true);
@@ -343,46 +351,86 @@ void loop() {
   }
 
 
+  // ── Ghost Plane: solo en pantalla RADAR, 10 s antes del cambio ───────────
+  if (currentState == STATE_RADAR) {
+    unsigned long radarMs    = pref_radar_time_s * 1000UL;
+    unsigned long timeInState = now - stateStartTime;
+    bool tenSecsLeft = (radarMs > 10000UL) && (timeInState >= radarMs - 10000UL);
+
+    if (pref_ghost_mins > 0
+        && now - lastGhostSpawnTime > (pref_ghost_mins * 60000UL)
+        && !ghostActive
+        && tenSecsLeft) {
+      lastGhostSpawnTime = now;
+      ghostActive = true;
+      ghostTrail.clear();
+      ghostTrailEndTime = 0;
+
+      int side = random(4);
+      float speed = (float)pref_ghost_speed;
+      float startX, startY, endX, endY;
+
+      if (side == 0) { startX = random(40, 200); startY = -20;  endX = random(40, 200); endY = 260; }
+      else if (side == 1) { startX = 260; startY = random(40, 200); endX = -20;  endY = random(40, 200); }
+      else if (side == 2) { startX = random(40, 200); startY = 260;  endX = random(40, 200); endY = -20; }
+      else               { startX = -20; startY = random(40, 200); endX = 260;  endY = random(40, 200); }
+
+      ghostX = startX; ghostY = startY;
+      float dx = endX - startX;
+      float dy = endY - startY;
+      float mag = sqrt(dx * dx + dy * dy);
+      ghostVx = (dx / mag) * speed;
+      ghostVy = (dy / mag) * speed;
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (currentState == STATE_TIME) {
     if (now - lastDrawTime > 1000) {
       if (timeDisplayMode == 0) drawTimeUI(&timeinfo);
       else if (timeDisplayMode == 1) drawAnalogTimeUI(&timeinfo);
       else drawAnalog24hTimeUI(&timeinfo);
-      lastDrawTime = now;
-    }
-    return; // Skip radar logic
-  } else if (currentState == STATE_WEATHER) {
-    if (now - lastDrawTime > 50) { // Reducido a 50ms para permitir animaciones fluidas
-      drawWeatherUI(&timeinfo);
-      lastDrawTime = now;
-    }
-    return; // Skip radar logic
-  } else if (currentState == STATE_MOON) {
-    if (now - lastDrawTime > 1000) { 
-      drawMoonUI(&timeinfo);
-      lastDrawTime = now;
-    }
-    return; // Skip radar logic
-  } else if (currentState == STATE_HORIZON) {
-    if (now - lastDrawTime > 100) { 
-      drawArtificialHorizon();
+      spr.pushSprite(0, 0);
       lastDrawTime = now;
     }
     return;
-
+  } else if (currentState == STATE_WEATHER) {
+    if (now - lastDrawTime > 50) {
+      drawWeatherUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_MOON) {
+    if (now - lastDrawTime > 80) {
+      drawMoonUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_HORIZON) {
+    if (now - lastDrawTime > 100) {
+      drawArtificialHorizon();
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
   } else if (currentState == STATE_ISS) {
-    if (now - lastDrawTime > 1000) { 
+    if (now - lastDrawTime > 1000) {
       drawISS();
+      spr.pushSprite(0, 0);
       lastDrawTime = now;
     }
     return;
   } else if (currentState == STATE_SUN) {
-    if (now - lastDrawTime > 1000) { 
+    if (now - lastDrawTime > 1000) {
       drawSunArc(&timeinfo);
+      spr.pushSprite(0, 0);
       lastDrawTime = now;
     }
     return;
   }
+
   
   if (pref_airport_id != "" && !pref_geoip) {
     if (!airportShownInitially) {
@@ -411,71 +459,32 @@ void loop() {
     lastDrawTime = now; // Prevent immediate redraw skipping the final frame
   }
   
-  // Ghost Plane Logic Update
-  if (currentState == STATE_RADAR) {
-    if (pref_ghost_mins > 0 && now - lastGhostSpawnTime > (pref_ghost_mins * 60000UL) && !ghostActive) {
-      lastGhostSpawnTime = now;
-      ghostActive = true;
-      ghostTrail.clear();
-      ghostTrailEndTime = 0;
-      
-      int side = random(4);
-      float speed = (float)pref_ghost_speed;
-      float startX, startY, endX, endY;
-      
-      if (side == 0) { // top -> bottom
-        startX = random(40, 200); startY = -20;
-        endX = random(40, 200); endY = 260;
-      } else if (side == 1) { // right -> left
-        startX = 260; startY = random(40, 200);
-        endX = -20; endY = random(40, 200);
-      } else if (side == 2) { // bottom -> top
-        startX = random(40, 200); startY = 260;
-        endX = random(40, 200); endY = -20;
-      } else { // left -> right
-        startX = -20; startY = random(40, 200);
-        endX = 260; endY = random(40, 200);
-      }
-      
-      ghostX = startX;
-      ghostY = startY;
-      
-      float dx = endX - startX;
-      float dy = endY - startY;
-      float mag = sqrt(dx * dx + dy * dy);
-      ghostVx = (dx / mag) * speed;
-      ghostVy = (dy / mag) * speed;
-    }
-  }
-
   unsigned long currentDrawInterval = (ghostActive || !ghostTrail.empty()) ? 25 : drawInterval;
 
   if (now - lastDrawTime > currentDrawInterval) {
-    float dt = (now - lastDrawTime) / 1000.0; 
-    
+    float dt = (now - lastDrawTime) / 1000.0;
+
+    // Actualizar posición del ghost (radar)
     if (ghostActive) {
       ghostX += ghostVx * dt;
       ghostY += ghostVy * dt;
-      
-      if (ghostTrail.empty() || hypot(ghostX - ghostTrail.back().x, ghostY - ghostTrail.back().y) > 4.0) {
+      if (ghostTrail.empty() || hypot(ghostX - ghostTrail.back().x, ghostY - ghostTrail.back().y) > 4.0)
         ghostTrail.push_back({ghostX, ghostY});
-      }
-      if (ghostTrail.size() > pref_ghost_trail) {
+      if ((int)ghostTrail.size() > pref_ghost_trail) {
         int idx = random(ghostTrail.size() - 1);
         ghostTrail.erase(ghostTrail.begin() + idx);
       }
-      
-      if (ghostX < -50 || ghostX > 290 || ghostY < -50 || ghostY > 290) {
-         ghostActive = false;
-      }
+      if (ghostX < -50 || ghostX > 290 || ghostY < -50 || ghostY > 290)
+        ghostActive = false;
     } else if (!ghostTrail.empty()) {
-      if (random(100) < 50) { 
+      if (random(100) < 50) {
         int idx = random(ghostTrail.size());
         ghostTrail.erase(ghostTrail.begin() + idx);
       }
     }
     
     for (int i = 0; i < planes.size(); i++) {
+
        if (planes[i].velocity > 0) {
          float distMovedKm = (planes[i].velocity * dt) / 3600.0;
          float dy = distMovedKm * cos(planes[i].heading * M_PI / 180.0);
@@ -513,7 +522,27 @@ void loop() {
   }
 
   // Control WS2812 RGB LED on GPIO 21 (ESP32-S3-Zero)
-  if (ledGreenUntil > now) {
+  // 1. Check if ISS is currently visible
+  bool iss_visible = false;
+  if (iss_next_pass_time > 0 && iss_next_pass_duration > 0) {
+    struct tm now_tm;
+    if (getLocalTime(&now_tm, 10)) {
+      time_t local_unix = mktime(&now_tm);
+      time_t now_utc    = local_unix - pref_offset - (pref_dst ? 3600 : 0);
+      if (now_utc >= iss_next_pass_time && now_utc <= (iss_next_pass_time + iss_next_pass_duration)) {
+        iss_visible = true;
+      }
+    }
+  }
+
+  if (iss_visible) {
+    // ISS Visible: Parpadeo amarillo
+    if ((now / 500) % 2 == 0) {
+      neopixelWrite(21, 100, 100, 0); // Amarillo (brillo moderado)
+    } else {
+      neopixelWrite(21, 0, 0, 0);
+    }
+  } else if (ledGreenUntil > now) {
     // Aterrizaje: Verde
     neopixelWrite(21, 0, 255, 0); 
   } else if (ledRedUntil > now) {

@@ -87,6 +87,12 @@ int timeDisplayMode = 0;
 
 String pref_aemet_key = "";
 String pref_idema = "";
+String pref_n2yo_key = "";
+
+long    iss_next_pass_time     = 0;
+int     iss_next_pass_max_el   = 0;
+int     iss_next_pass_duration = 0;
+unsigned long lastIssPassFetch = 0;
 
 WeatherData currentWeather;
 
