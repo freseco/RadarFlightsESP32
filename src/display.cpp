@@ -581,8 +581,18 @@ struct Rocket {
   unsigned long durationMs;
 };
 
+// Satélite orbitando (pequeño punto)
+struct Satellite {
+  float x, y;
+  float vx, vy;
+  bool  active;
+  unsigned long startMs;
+  unsigned long durationMs;
+};
+
 static ShootingStar mShoot[3];
 static Rocket       mRocket;
+static Satellite    mSatellite;
 static bool         moonAnimInit = false;
 
 static void initMoonAnimations() {
@@ -590,6 +600,7 @@ static void initMoonAnimations() {
     mShoot[i].active = false;
   }
   mRocket.active = false;
+  mSatellite.active = false;
   moonAnimInit = true;
 }
 
@@ -643,7 +654,7 @@ static void updateMoonAnimations(unsigned long now) {
       mRocket.vy = ltr ? 0.4f : -0.4f;
       mRocket.active    = true;
       mRocket.startMs   = now;
-      mRocket.durationMs = 5000;
+      mRocket.durationMs = 25000;
     }
   } else {
     // Avanzar posición
@@ -653,6 +664,30 @@ static void updateMoonAnimations(unsigned long now) {
         now - mRocket.startMs > mRocket.durationMs) {
       mRocket.active  = false;
       mRocket.startMs = now;
+    }
+  }
+
+  // Satélite
+  if (!mSatellite.active) {
+    unsigned long wait = 4000 + (moonRand() % 6000); // 4-10 s entre satélites
+    if (now - mSatellite.startMs > wait) {
+      bool ltr = (moonRand() % 2) == 0;
+      mSatellite.y  = 5.0f + (moonRand() % 70);         // fila 5..75
+      mSatellite.x  = ltr ? -10.0f : 250.0f;
+      mSatellite.vx = ltr ?  1.0f  : -1.0f;
+      mSatellite.vy = (moonRand() % 100) / 100.0f - 0.5f; // Ligera inclinación
+      mSatellite.active    = true;
+      mSatellite.startMs   = now;
+      mSatellite.durationMs = 25000;
+    }
+  } else {
+    // Avanzar posición
+    mSatellite.x += mSatellite.vx;
+    mSatellite.y += mSatellite.vy;
+    if (mSatellite.x > 260 || mSatellite.x < -20 ||
+        now - mSatellite.startMs > mSatellite.durationMs) {
+      mSatellite.active  = false;
+      mSatellite.startMs = now;
     }
   }
 
@@ -824,6 +859,16 @@ void drawMoonUI(struct tm* timeinfo) {
   // Cohete/transbordador
   if (mRocket.active) {
     drawRocket(mRocket.x, mRocket.y, mRocket.vx > 0);
+  }
+
+  // Satélite
+  if (mSatellite.active) {
+    uint8_t pulse = 150 + 105 * (sin(now / 200.0) + 1.0) / 2.0;
+    uint16_t satCol = spr.color565(pulse, pulse, 255);
+    spr.drawPixel((int)mSatellite.x, (int)mSatellite.y, satCol);
+    spr.drawPixel((int)mSatellite.x + 1, (int)mSatellite.y, satCol);
+    spr.drawPixel((int)mSatellite.x, (int)mSatellite.y + 1, satCol);
+    spr.drawPixel((int)mSatellite.x + 1, (int)mSatellite.y + 1, satCol);
   }
 
   // ── Luna ──────────────────────────────────────────────────────────────────
