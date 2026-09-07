@@ -702,13 +702,13 @@ static void drawRocket(float x, float y, bool leftToRight) {
   uint16_t blue    = spr.color565(80,  170, 255);
   uint16_t lblue   = spr.color565(160, 210, 255);
 
-  // Cada "celda lógica" = bloque de 2×2 px
+  // Cada "celda lógica" = bloque de 2x2 px
   auto cell = [&](int cx, int cy, uint16_t c) {
-    int rx = leftToRight ? ix + cx * 2 : ix - cx * 2;
+    int rx = leftToRight ? ix - cx * 2 : ix + cx * 2;
     int ry = iy + cy * 2;
     for (int dy = 0; dy < 2; dy++)
       for (int ddx = 0; ddx < 2; ddx++) {
-        int fx = leftToRight ? rx + ddx : rx - ddx;
+        int fx = leftToRight ? rx - ddx : rx + ddx;
         int fy = ry + dy;
         if (fx >= 0 && fx < 240 && fy >= 0 && fy < 240)
           spr.drawPixel(fx, fy, c);
@@ -838,6 +838,17 @@ void drawMoonUI(struct tm* timeinfo) {
   
   spr.fillCircle(mX, mY, mR, moonColor);
   
+  auto blurShadowCircle = [&](int cx, int cy, int r, int dir) {
+    for (int i = 8; i >= 0; i--) {
+      spr.fillCircle(cx + i * dir, cy, r, spr.color565(240 * i / 9, 240 * i / 9, 200 * i / 9));
+    }
+  };
+  auto blurShadowRect = [&](int rx, int ry, int rw, int rh, int dir) {
+    for (int i = 8; i >= 0; i--) {
+      spr.fillRect(rx + i * dir, ry, rw, rh, spr.color565(240 * i / 9, 240 * i / 9, 200 * i / 9));
+    }
+  };
+
   switch(phase) {
     case 0: 
       phaseName = tr("Luna Nueva", "New Moon");
@@ -845,35 +856,44 @@ void drawMoonUI(struct tm* timeinfo) {
       break;
     case 1: 
       phaseName = tr("Creciente Concava", "Waxing Crescent");
-      spr.fillCircle(mX - 25, mY, mR, shadowColor);
+      blurShadowCircle(mX - 25, mY, mR, 1);
       break;
     case 2: 
       phaseName = tr("Cuarto Creciente", "First Quarter");
-      spr.fillRect(mX - mR, mY - mR, mR, mR * 2, shadowColor);
+      blurShadowRect(mX - mR, mY - mR, mR, mR * 2, 1);
       break;
     case 3: 
       phaseName = tr("Creciente Convexa", "Waxing Gibbous");
-      spr.fillCircle(mX - 50, mY, mR, shadowColor); 
+      blurShadowCircle(mX - 50, mY, mR, 1); 
       break;
     case 4: 
       phaseName = tr("Luna Llena", "Full Moon");
       break;
     case 5: 
       phaseName = tr("Menguante Convexa", "Waning Gibbous");
-      spr.fillCircle(mX + 50, mY, mR, shadowColor);
+      blurShadowCircle(mX + 50, mY, mR, -1);
       break;
     case 6: 
       phaseName = tr("Cuarto Menguante", "Last Quarter");
-      spr.fillRect(mX, mY - mR, mR, mR * 2, shadowColor);
+      blurShadowRect(mX, mY - mR, mR, mR * 2, -1);
       break;
     case 7: 
       phaseName = tr("Menguante Concava", "Waning Crescent");
-      spr.fillCircle(mX + 25, mY, mR, shadowColor);
+      blurShadowCircle(mX + 25, mY, mR, -1);
       break;
   }
 
   // Borde para que se vea la luna nueva
   spr.drawCircle(mX, mY, mR, spr.color565(100, 100, 100));
+
+  float fraction = getMoonPhaseFraction(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+  int percentage = (int)round((1.0 - cos(fraction * 2.0 * M_PI)) / 2.0 * 100.0);
+
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(4); // Fuente un poco mas grande
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_CYAN); // Sin color de fondo para que sea transparente
+  spr.drawString(String(percentage) + "%", mX, mY);
 
   spr.setTextDatum(MC_DATUM);
   spr.setTextFont(2);
@@ -966,7 +986,7 @@ void drawWeatherUI(struct tm* timeinfo) {
     iconType = isDay ? 0 : 1; // Sun or Moon
   }
   
-  drawWeatherIcon(centerX, centerY - 25, iconType);
+  drawWeatherIcon(centerX, centerY - 40, iconType);
   
   uint16_t tempColor;
   if (cw.ta <= 5.0) tempColor = TFT_WHITE;
@@ -979,6 +999,15 @@ void drawWeatherUI(struct tm* timeinfo) {
   spr.setTextSize(2);
   spr.setTextColor(tempColor, TFT_BLACK);
   spr.drawString(String(cw.ta, 1) + " C", centerX, centerY + 25);
+  
+  // Mostrar max y min a los lados (centradas verticalmente en el centro de la pantalla redonda)
+  spr.setTextFont(2);
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_CYAN, TFT_BLACK);
+  spr.drawString(String(cw.tamin, 1) + "C", centerX - 95, centerY);
+  
+  spr.setTextColor(TFT_ORANGE, TFT_BLACK);
+  spr.drawString(String(cw.tamax, 1) + "C", centerX + 95, centerY);
   
   spr.setTextFont(2);
   spr.setTextSize(1);
@@ -1405,12 +1434,9 @@ void drawSunArc(struct tm* timeinfo) {
   }
   spr.drawLine(centerX - 90, centerY + 15, centerX + 90, centerY + 15, spr.color565(100,50,0));
   
-  spr.setTextSize(1);
-  spr.setTextColor(TFT_WHITE);
-  spr.drawString(sunriseTimeStr, centerX - 80, centerY + 30);
-  spr.drawString(sunsetTimeStr, centerX + 80, centerY + 30);
   
   spr.setTextColor(TFT_YELLOW);
+  spr.setTextSize(1);
   spr.drawString("Zenit: " + solarNoonTimeStr, centerX, centerY - 15);
   
   // Calculate Sun position (sun_progress goes from 0.0 to 1.0)
@@ -1431,12 +1457,79 @@ void drawSunArc(struct tm* timeinfo) {
   int my = centerY + 15 + sin(moon_rad)*r;
   
   // Draw Moon
+  int phase = getMoonPhase(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
   spr.fillCircle(mx, my, 7, TFT_LIGHTGREY);
+  
+  uint16_t shadowColor = TFT_BLACK;
+  switch(phase) {
+    case 0: spr.fillCircle(mx, my, 7, shadowColor); break;
+    case 1: spr.fillCircle(mx - 3, my, 7, shadowColor); break;
+    case 2: spr.fillRect(mx - 7, my - 7, 7, 14, shadowColor); break;
+    case 3: spr.fillCircle(mx - 6, my, 7, shadowColor); break;
+    case 4: break; // Full
+    case 5: spr.fillCircle(mx + 6, my, 7, shadowColor); break;
+    case 6: spr.fillRect(mx, my - 7, 7, 14, shadowColor); break;
+    case 7: spr.fillCircle(mx + 3, my, 7, shadowColor); break;
+  }
+  
   spr.drawCircle(mx, my, 7, TFT_WHITE);
   
-  // Draw Sun
-  spr.fillCircle(sx, sy, 8, TFT_YELLOW);
-  spr.drawCircle(sx, sy, 10, TFT_ORANGE);
+  // Draw Sun with intensity based on height
+  float elevation = -sin(sun_rad);
   
+  uint16_t nightFill = spr.color565(40, 40, 40);
+  uint16_t nightStroke = spr.color565(70, 70, 70);
+  
+  float pos_elev = elevation > 0 ? elevation : 0;
+  uint8_t day_r = 255;
+  uint8_t day_g = 64 + (uint8_t)(191.0 * pos_elev);
+  uint8_t day_b = (uint8_t)(200.0 * pos_elev);
+  uint16_t dayFill = spr.color565(day_r, day_g, day_b);
+  uint16_t dayStroke = spr.color565(255, 128 + (uint8_t)(127.0 * pos_elev), 0);
+  
+  // Draw Night Sun (full circle)
+  spr.fillCircle(sx, sy, 8, nightFill);
+  spr.drawCircle(sx, sy, 10, nightStroke);
+  
+  // Overwrite with Day Sun for the part above the horizon
+  int horizonY = centerY + 15;
+  for (int dy = -8; dy <= 8; dy++) {
+    if (sy + dy <= horizonY) {
+      int dx = round(sqrt(64 - dy * dy));
+      spr.drawFastHLine(sx - dx, sy + dy, dx * 2 + 1, dayFill);
+    }
+  }
+  for (int a = 0; a < 360; a++) {
+    float rad = a * M_PI / 180.0;
+    int px = sx + round(10 * cos(rad));
+    int py = sy + round(10 * sin(rad));
+    if (py <= horizonY) {
+      spr.drawPixel(px, py, dayStroke);
+    }
+  }
+  
+  // Draw times at the very end so they are always on top
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_WHITE);
+  spr.drawString(sunriseTimeStr, centerX - 80, centerY + 25);
+  spr.drawString(sunsetTimeStr, centerX + 80, centerY + 25);
+
+  // Daylight duration calculation
+  if (sunriseTimeStr != "--:--" && sunsetTimeStr != "--:--") {
+    int sr_h = sunriseTimeStr.substring(0, 2).toInt();
+    int sr_m = sunriseTimeStr.substring(3, 5).toInt();
+    int ss_h = sunsetTimeStr.substring(0, 2).toInt();
+    int ss_m = sunsetTimeStr.substring(3, 5).toInt();
+    
+    int total_sr = sr_h * 60 + sr_m;
+    int total_ss = ss_h * 60 + ss_m;
+    int diff = total_ss - total_sr;
+    if (diff < 0) diff += 24 * 60;
+    
+    String luzStr = tr("Luz solar: ", "Daylight: ") + String(diff / 60) + "h " + String(diff % 60) + "m";
+    spr.setTextColor(spr.color565(150, 200, 255));
+    spr.drawString(luzStr, centerX, centerY + 65);
+  }
+
   spr.pushSprite(0, 0);
 }

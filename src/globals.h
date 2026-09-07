@@ -116,6 +116,8 @@ struct WeatherData {
   float prec;
   float vv;
   float dv;
+  float tamax;
+  float tamin;
   String ubi;
   bool valid;
 };

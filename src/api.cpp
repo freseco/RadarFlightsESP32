@@ -252,6 +252,8 @@ void fetchAemetWeather() {
             newWeather.prec = last["prec"].as<float>();
             newWeather.vv = last["vv"].as<float>();
             newWeather.dv = last["dv"].as<float>();
+            newWeather.tamax = last.containsKey("tamax") ? last["tamax"].as<float>() : newWeather.ta;
+            newWeather.tamin = last.containsKey("tamin") ? last["tamin"].as<float>() : newWeather.ta;
             newWeather.ubi = last["ubi"].as<String>();
             newWeather.valid = true;
             

@@ -21,8 +21,8 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
     - Digital.
     - Analógico 12 Horas.
     - Analógico 24 Horas (con borde iluminado en las horas de sol y aguja de 24h).
-  - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de AEMET (requiere API Key gratuita). Cuenta con una brújula con puntos cardinales alineados para indicar la dirección exacta del viento.
-  - 🌑 **Fase Lunar**: Indicador de la fase lunar actual (se oculta automáticamente si la luna está bajo el horizonte). Incluye animaciones dinámicas de estrellas fugaces y un transbordador espacial cruzando la pantalla.
+  - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de AEMET (requiere API Key gratuita). Muestra temperaturas actual, máxima y mínima, y cuenta con una brújula indicando la dirección del viento.
+  - 🌑 **Fase Lunar**: Indicador de la fase lunar actual y su porcentaje de iluminación visible (se oculta automáticamente si la luna está bajo el horizonte). Incluye animaciones dinámicas de estrellas fugaces y un transbordador espacial cruzando la pantalla.
   - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
   - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación. Incluye un sistema de predicción visual que te avisa cuándo será visible a simple vista desde tu posición (vía n2yo.com).
   - ☀️ **Reloj Astronómico**: Representación gráfica en un círculo de 24h de la posición en el cielo del Sol y la Luna utilizando trigonometría (día y noche).
@@ -113,8 +113,8 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
    - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos.
    - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar.
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
-3. **El Tiempo (AEMET)**: Pantalla de información meteorológica con la temperatura actual, humedad, y viento extraída directamente de AEMET.
-4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual, iluminada acorde a los días del ciclo lunar. *(Nota: El sistema tiene un salto inteligente que omite esta pantalla si la luna no es visible en el cielo en ese momento).* Incluye animaciones aleatorias de estrellas fugaces y un cohete espacial.
+3. **El Tiempo (AEMET)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de AEMET.
+4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar. *(Nota: El sistema tiene un salto inteligente que omite esta pantalla si la luna no es visible en el cielo en ese momento).* Incluye animaciones aleatorias de estrellas fugaces y un cohete espacial.
 5. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
 6. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
 7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche.
