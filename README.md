@@ -96,7 +96,7 @@ esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x10000 firmware.bin
    * **El Tiempo (AEMET)**: Pega tu [API Key gratuita de AEMET](https://opendata.aemet.es/centrodedescargas/altaUsuario?) para ver los datos del clima.
    * **ISS Tracker (n2yo)**: Puedes configurar tu API Key gratuita de [n2yo.com](https://www.n2yo.com/login/) para predecir cuándo la Estación Espacial será visible desde tu casa.
    * **Hora y Fecha**: Ajusta tu zona horaria y horario de verano.
-   * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color y el **Modo de Reloj** (puedes hacer que los relojes vayan alternándose, o fijar uno en concreto como el de 24 Horas).
+   * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color, el **Modo de Reloj** y si deseas mostrar la pantalla del **Zodíaco**.
 5. Haz clic en **Guardar y Reiniciar**. ¡El radar se conectará y empezará a funcionar!
 
 > **Restablecimiento de Fábrica**: Si deseas borrar toda la configuración (por ejemplo, cambias de casa o de red de internet) puedes mantener pulsado el botón **BOOT** de la placa mientras se enciende o se reinicia. Esto borrará la memoria NVS y volverá al punto de acceso.
@@ -118,6 +118,7 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
 5. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
 6. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
 7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche.
+8. **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual. Incluye un cielo animado con estrellas de fondo que titilan y estrellas fugaces que cruzan la pantalla esporádicamente.
 
 ---
 

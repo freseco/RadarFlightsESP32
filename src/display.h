@@ -15,6 +15,7 @@ void drawMoonUI(struct tm* timeinfo);
 void drawArtificialHorizon();
 void drawISS();
 void drawSunArc(struct tm* timeinfo);
+void drawZodiacUI(struct tm* timeinfo);
 void drawWeatherUI(struct tm* timeinfo);
 
 void drawGhostPlane();

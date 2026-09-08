@@ -66,6 +66,7 @@ enum DisplayState {
   STATE_HORIZON,
   STATE_ISS,
   STATE_SUN,
+  STATE_ZODIAC,
   STATE_MAX
 };
 extern DisplayState currentState;
@@ -93,6 +94,7 @@ extern bool pref_show_moon;
 extern bool pref_show_horizon;
 extern bool pref_show_iss;
 extern bool pref_show_sun;
+extern bool pref_show_zodiac;
 extern int pref_screen_time_s;
 extern int pref_radar_time_s;
 

@@ -121,6 +121,7 @@ void setup() {
   pref_show_horizon = preferences.getBool("sh_horiz", true);
   pref_show_iss = preferences.getBool("sh_iss", true);
   pref_show_sun = preferences.getBool("sh_sun", true);
+  pref_show_zodiac = preferences.getBool("sh_zodiac", true);
   
   pref_screen_time_s = preferences.getInt("screen_time", 30);
   pref_radar_time_s = preferences.getInt("radar_time", 30);
@@ -262,6 +263,7 @@ void nextState() {
     else if (currentState == STATE_HORIZON && pref_show_horizon) enabled = true;
     else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
     else if (currentState == STATE_SUN && pref_show_sun) enabled = true;
+    else if (currentState == STATE_ZODIAC && pref_show_zodiac) enabled = true;
     
     if (enabled) {
       if (currentState == STATE_TIME) {
@@ -427,6 +429,13 @@ void loop() {
       lastDrawTime = now;
     }
     return;
+  } else if (currentState == STATE_ZODIAC) {
+    if (now - lastDrawTime > 100) {
+      drawZodiacUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
   }
 
   
@@ -460,7 +469,7 @@ void loop() {
   unsigned long currentDrawInterval = (ghostActive || !ghostTrail.empty()) ? 25 : drawInterval;
 
   if (now - lastDrawTime > currentDrawInterval) {
-    float dt = (now - lastDrawTime) / 1000.0;
+    float dt = (lastDrawTime == 0) ? 0.0 : (now - lastDrawTime) / 1000.0;
 
     // Actualizar posición del ghost (radar)
     if (ghostActive) {

@@ -28,6 +28,7 @@ bool pref_show_moon = true;
 bool pref_show_horizon = true;
 bool pref_show_iss = true;
 bool pref_show_sun = true;
+bool pref_show_zodiac = true;
 int pref_screen_time_s = 30;
 int pref_radar_time_s = 30;
 

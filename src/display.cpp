@@ -321,7 +321,7 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
   
   // Dibujar marcas de las horas y números principales
   spr.setTextDatum(MC_DATUM);
-  spr.setTextFont(2);
+  spr.setTextFont(4);
   spr.setTextSize(1);
   spr.setTextColor(TFT_WHITE, faceColor);
   
@@ -1578,3 +1578,178 @@ void drawSunArc(struct tm* timeinfo) {
 
   spr.pushSprite(0, 0);
 }
+
+// ─── ZODIAC SCREEN ────────────────────────────────────────────────────────
+struct ZodiacSign {
+  const char* name_es;
+  const char* name_en;
+  const char* symbol;
+  const char* dateRange_es;
+  const char* dateRange_en;
+  int starCount;
+  int8_t stars[15][2]; // x, y (relative to center)
+  int lineCount;
+  int8_t lines[15][2]; // idx1, idx2
+};
+
+const ZodiacSign zodiacs[12] = {
+  // 0: Capricornio
+  {"Capricornio", "Capricorn", "♑", "22 Dic - 19 Ene", "Dec 22 - Jan 19", 9, 
+    {{-30,-20}, {-10,-30}, {10,-20}, {20,0}, {10,20}, {-10,15}, {-25,5}, {25,-25}, {15,30}}, 
+    8, {{0,1}, {1,2}, {2,3}, {3,4}, {4,5}, {5,6}, {2,7}, {4,8}}},
+  // 1: Acuario
+  {"Acuario", "Aquarius", "♒", "20 Ene - 18 Feb", "Jan 20 - Feb 18", 10,
+    {{-40,-10}, {-20,-20}, {0,-10}, {20,-20}, {40,-10}, {-40,10}, {-20,0}, {0,10}, {20,0}, {40,10}},
+    8, {{0,1}, {1,2}, {2,3}, {3,4}, {5,6}, {6,7}, {7,8}, {8,9}}},
+  // 2: Piscis
+  {"Piscis", "Pisces", "♓", "19 Feb - 20 Mar", "Feb 19 - Mar 20", 11,
+    {{-30,20}, {-40,0}, {-30,-20}, {-20,0}, {0,5}, {20,10}, {30,25}, {40,15}, {30,5}, {30,-5}, {15,-15}},
+    10, {{0,1}, {1,2}, {2,3}, {3,0}, {3,4}, {4,5}, {5,6}, {6,7}, {7,8}, {8,5}}},
+  // 3: Aries
+  {"Aries", "Aries", "♈", "21 Mar - 19 Abr", "Mar 21 - Apr 19", 4,
+    {{-30,20}, {-10,-10}, {10,0}, {30,-15}},
+    3, {{0,1}, {1,2}, {2,3}}},
+  // 4: Tauro
+  {"Tauro", "Taurus", "♉", "20 Abr - 20 May", "Apr 20 - May 20", 8,
+    {{-30,-30}, {-10,0}, {10,-10}, {30,-30}, {0,10}, {5,25}, {10,40}, {-5,15}},
+    7, {{0,1}, {1,2}, {2,3}, {1,4}, {2,4}, {4,7}, {7,5}}},
+  // 5: Géminis
+  {"Géminis", "Gemini", "♊", "21 May - 20 Jun", "May 21 - Jun 20", 9,
+    {{-20,-30}, {-10,-10}, {-20,10}, {-30,30}, {20,-25}, {10,-5}, {20,15}, {30,35}, {0,-15}},
+    8, {{0,1}, {1,2}, {2,3}, {4,5}, {5,6}, {6,7}, {1,5}, {2,6}}},
+  // 6: Cáncer
+  {"Cáncer", "Cancer", "♋", "21 Jun - 22 Jul", "Jun 21 - Jul 22", 5,
+    {{-30,-20}, {-10,0}, {10,-10}, {30,10}, {10,30}},
+    4, {{0,1}, {1,2}, {2,3}, {1,4}}},
+  // 7: Leo
+  {"Leo", "Leo", "♌", "23 Jul - 22 Ago", "Jul 23 - Aug 22", 9,
+    {{-30,-20}, {-20,-40}, {0,-35}, {10,-15}, {-10,0}, {20,10}, {40,0}, {30,20}, {10,25}},
+    8, {{0,1}, {1,2}, {2,3}, {3,4}, {3,5}, {5,6}, {6,7}, {7,8}}},
+  // 8: Virgo
+  {"Virgo", "Virgo", "♍", "23 Ago - 22 Sep", "Aug 23 - Sep 22", 10,
+    {{-40,0}, {-20,10}, {-10,-10}, {10,-20}, {20,0}, {30,-15}, {40,10}, {30,30}, {10,20}, {0,35}},
+    9, {{0,1}, {1,2}, {2,3}, {3,4}, {4,5}, {5,6}, {6,7}, {7,8}, {8,9}}},
+  // 9: Libra
+  {"Libra", "Libra", "♎", "23 Sep - 22 Oct", "Sep 23 - Oct 22", 6,
+    {{-30,10}, {-15,-10}, {15,-15}, {30,0}, {0,15}, {-10,25}},
+    5, {{0,1}, {1,2}, {2,3}, {1,4}, {4,5}}},
+  // 10: Escorpio
+  {"Escorpio", "Scorpio", "♏", "23 Oct - 21 Nov", "Oct 23 - Nov 21", 12,
+    {{-30,-10}, {-20,-20}, {0,-25}, {20,-15}, {10,5}, {0,20}, {-10,35}, {10,40}, {25,30}, {35,15}, {45,25}, {50,10}},
+    11, {{0,1}, {1,2}, {2,3}, {3,4}, {4,5}, {5,6}, {6,7}, {7,8}, {8,9}, {9,10}, {10,11}}},
+  // 11: Sagitario
+  {"Sagitario", "Sagittarius", "♐", "22 Nov - 21 Dic", "Nov 22 - Dec 21", 8,
+    {{-30,20}, {-10,0}, {10,-20}, {30,-40}, {0,-10}, {-20,-20}, {20,-10}, {40,0}},
+    7, {{0,1}, {1,2}, {2,3}, {1,4}, {4,5}, {2,6}, {6,7}}}
+};
+
+int getZodiacIndex(int month, int day) {
+  if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return 0;
+  if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 1;
+  if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return 2;
+  if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 3;
+  if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 4;
+  if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 5;
+  if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 6;
+  if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 7;
+  if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 8;
+  if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 9;
+  if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 10;
+  return 11;
+}
+
+void drawZodiacUI(struct tm* timeinfo) {
+  spr.fillSprite(TFT_BLACK);
+  
+  int month = timeinfo->tm_mon + 1;
+  int day = timeinfo->tm_mday;
+  int zIdx = getZodiacIndex(month, day);
+  
+  const ZodiacSign& z = zodiacs[zIdx];
+  
+  unsigned long now = millis();
+
+  // Background stars with twinkling
+  for (int i = 0; i < 30; i++) {
+    int sx = (i * 137) % 240;
+    int sy = (i * 93) % 240;
+    float phase = (now * 0.003) + (i * 2.0);
+    uint8_t b = 70 + 50 * sin(phase); // brightness between 20 and 120
+    spr.drawPixel(sx, sy, spr.color565(b, b, b));
+  }
+  
+  // Shooting stars
+  static float ss_x = -100, ss_y = -100, ss_vx = 0, ss_vy = 0;
+  static unsigned long last_ss_time = 0;
+  static bool ss_active = false;
+
+  if (!ss_active && (now - last_ss_time > 2000)) { // 2s cooldown
+    if (random(100) < 3) { // chance to spawn
+      ss_x = random(20, 220);
+      ss_y = 0;
+      ss_vx = random(4, 10) * (random(2) == 0 ? 1 : -1);
+      ss_vy = random(4, 10);
+      ss_active = true;
+    }
+  }
+
+  if (ss_active) {
+    ss_x += ss_vx;
+    ss_y += ss_vy;
+    spr.drawLine(ss_x, ss_y, ss_x - ss_vx * 1.5, ss_y - ss_vy * 1.5, TFT_WHITE);
+    if (ss_x < -20 || ss_x > 260 || ss_y > 260) {
+      ss_active = false;
+      last_ss_time = now;
+    }
+  }
+  
+  // Drawing constellation
+  int cx = centerX;
+  int cy = centerY + 15; // offset slightly down
+  float scale = 1.8;
+  
+  // Lines
+  for (int i = 0; i < z.lineCount; i++) {
+    int idx1 = z.lines[i][0];
+    int idx2 = z.lines[i][1];
+    int x1 = cx + z.stars[idx1][0] * scale;
+    int y1 = cy + z.stars[idx1][1] * scale;
+    int x2 = cx + z.stars[idx2][0] * scale;
+    int y2 = cy + z.stars[idx2][1] * scale;
+    spr.drawLine(x1, y1, x2, y2, spr.color565(80, 80, 150));
+  }
+  
+  // Stars with subtle twinkling
+  for (int i = 0; i < z.starCount; i++) {
+    int x = cx + z.stars[i][0] * scale;
+    int y = cy + z.stars[i][1] * scale;
+    
+    // twinkle effect based on time and star index
+    float phase = (now * 0.002) + (i * 1.5);
+    int r = 2 + sin(phase); // radius 1 to 3
+    
+    spr.fillCircle(x, y, r, spr.color565(200, 220, 255));
+    spr.drawCircle(x, y, r + 1, spr.color565(100, 120, 200));
+  }
+  
+  // Text
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  
+  // Name
+  spr.setTextFont(2);
+  spr.setTextSize(1);
+  spr.drawString(tr(z.name_es, z.name_en), centerX, 20);
+  
+  // Date Range
+  spr.setTextColor(spr.color565(150, 150, 150), TFT_BLACK);
+  spr.drawString(tr(z.dateRange_es, z.dateRange_en), centerX, 40);
+  
+  // Symbol
+  spr.setTextFont(4);
+  spr.setTextSize(1);
+  spr.setTextColor(spr.color565(255, 200, 100), TFT_BLACK);
+  spr.drawString(String(z.symbol), centerX, 240 - 20);
+}
+ 
+ 

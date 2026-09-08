@@ -152,6 +152,7 @@ const char* htmlForm = R"=====(
         <div class="chk-container"><input type='checkbox' name='sh_horiz' value='1' %CHK_HORIZ%> Horizonte Artificial</div>
         <div class="chk-container"><input type='checkbox' name='sh_iss' value='1' %CHK_ISS%> ISS Tracker</div>
         <div class="chk-container"><input type='checkbox' name='sh_sun' value='1' %CHK_SUN%> Arco Solar</div>
+        <div class="chk-container"><input type='checkbox' name='sh_zodiac' value='1' %CHK_ZODIAC%> Zodíaco</div>
       </div>
       <label>⏳ Tiempo de cada pantalla (segundos):</label>
       <input type='number' name='screen_time' value='%SCREEN_TIME%'>
@@ -340,7 +341,7 @@ const char* htmlForm = R"=====(
         }).catch(e => console.log('Error updating status'));
     }, 5000);
   </script>
-  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com</div>
+  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com | v%FW_VER%</div>
 </body>
 </html>
 )=====";
@@ -501,6 +502,9 @@ void handleRoot() {
   html.replace("%CHK_HORIZ%", pref_show_horizon ? "checked" : "");
   html.replace("%CHK_ISS%", pref_show_iss ? "checked" : "");
   html.replace("%CHK_SUN%", pref_show_sun ? "checked" : "");
+  html.replace("%CHK_ZODIAC%", pref_show_zodiac ? "checked" : "");
+  
+  html.replace("%FW_VER%", FIRMWARE_VERSION);
   
   html.replace("%SCREEN_TIME%", String(pref_screen_time_s));
   html.replace("%RADAR_TIME%", String(pref_radar_time_s));
@@ -571,6 +575,7 @@ void handleSave() {
   pref_show_horizon = server.hasArg("sh_horiz");
   pref_show_iss = server.hasArg("sh_iss");
   pref_show_sun = server.hasArg("sh_sun");
+  pref_show_zodiac = server.hasArg("sh_zodiac");
   
   preferences.putBool("sh_radar", pref_show_radar);
   preferences.putBool("sh_time", pref_show_time);
@@ -579,6 +584,7 @@ void handleSave() {
   preferences.putBool("sh_horiz", pref_show_horizon);
   preferences.putBool("sh_iss", pref_show_iss);
   preferences.putBool("sh_sun", pref_show_sun);
+  preferences.putBool("sh_zodiac", pref_show_zodiac);
   
   if (server.hasArg("screen_time")) {
     preferences.putInt("screen_time", server.arg("screen_time").toInt());
@@ -652,6 +658,7 @@ void handleSave() {
   else if (currentState == STATE_HORIZON && pref_show_horizon) currentEnabled = true;
   else if (currentState == STATE_ISS && pref_show_iss) currentEnabled = true;
   else if (currentState == STATE_SUN && pref_show_sun) currentEnabled = true;
+  else if (currentState == STATE_ZODIAC && pref_show_zodiac) currentEnabled = true;
   
   if (!currentEnabled) {
     int prev = (int)currentState - 1;
