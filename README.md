@@ -109,6 +109,10 @@ esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x10000 firmware.bin
    * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color, el **Modo de Reloj** y si deseas mostrar la pantalla del **Zodíaco**.
 5. Haz clic en **Guardar y Reiniciar**. ¡El radar se conectará y empezará a funcionar!
 
+<div align="center">
+  <img src="images/11.png" width="50%" alt="Web de Configuración" style="border-radius: 10px;" />
+</div>
+
 > **Restablecimiento de Fábrica**: Si deseas borrar toda la configuración (por ejemplo, cambias de casa o de red de internet) puedes mantener pulsado el botón **BOOT** de la placa mientras se enciende o se reinicia. Esto borrará la memoria NVS y volverá al punto de acceso.
 
 ---
