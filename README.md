@@ -125,7 +125,7 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
 2. **Relojes**:
    - **Digital**: Reloj estándar en formato HH:MM.
    - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos.
-   - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar.
+   - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar. Incluye animaciones ambientales inmersivas: pájaros aleteando en la zona diurna, un cielo estrellado dinámico con estrellas fugaces en la zona nocturna, y un icono en la zona diurna que cambia en tiempo real (sol, nubes o lluvia) según el clima actual.
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
 3. **El Tiempo (AEMET)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de AEMET.
 4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar. *(Nota: El sistema tiene un salto inteligente que omite esta pantalla si la luna no es visible en el cielo en ese momento).* Incluye animaciones aleatorias de estrellas fugaces y un cohete espacial.

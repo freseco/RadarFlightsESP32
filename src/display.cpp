@@ -285,7 +285,10 @@ void drawTimeUI(struct tm* timeinfo) {
   spr.setTextFont(2);
   spr.setTextSize(1);
   spr.setTextColor(spr.color565(255, 150, 150), TFT_BLACK);
-  spr.drawString("CPU: " + String((int)temperatureRead()) + "C", centerX, centerY - 90);
+  String cpuStr = "CPU: " + String((int)temperatureRead());
+  spr.drawString(cpuStr, centerX, centerY - 90);
+  int cpuW = spr.textWidth(cpuStr);
+  spr.drawCircle(centerX + cpuW / 2 + 5, centerY - 90 - 6, 2, spr.color565(255, 150, 150));
   
   spr.setTextFont(4);
   spr.setTextSize(2); 
@@ -418,14 +421,166 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
   // CPU temperature on the left side of the clock face
   spr.setTextColor(spr.color565(255, 150, 150), faceColor);
   spr.drawString("CPU", centerX - 45, centerY - 8);
-  spr.drawString(String((int)temperatureRead()) + "\xF7" + "C", centerX - 45, centerY + 8);
+  String cpuStrA = String((int)temperatureRead());
+  spr.drawString(cpuStrA, centerX - 45, centerY + 8);
+  int cpuWA = spr.textWidth(cpuStrA);
+  spr.drawCircle(centerX - 45 + cpuWA / 2 + 5, centerY + 8 - 6, 2, spr.color565(255, 150, 150));
 
   spr.pushSprite(0, 0);
 }
 
+struct BlinkStar24h {
+  int x, y;
+  uint8_t maxBrightness;
+  float phase;
+  float speed;
+};
+
+struct ShootingStar24h {
+  float x, y;
+  float vx, vy;
+  int len;
+  bool active;
+  unsigned long startMs;
+  unsigned long durationMs;
+};
+
+struct Bird24h {
+  float x, y;
+  float vx, vy;
+  bool active;
+  unsigned long startMs;
+  unsigned long durationMs;
+  float flapSpeed;
+};
+
+static BlinkStar24h mStars24[40];
+static ShootingStar24h mShoot24[2];
+static Bird24h mBirds[4];
+static bool anim24hInit = false;
+
 void drawAnalog24hTimeUI(struct tm* timeinfo) {
-  spr.fillSprite(TFT_BLACK);
+  if (!anim24hInit) {
+    for (int i = 0; i < 40; i++) {
+      mStars24[i].x = random(0, 240);
+      mStars24[i].y = random(0, 240);
+      mStars24[i].maxBrightness = random(100, 255);
+      mStars24[i].phase = random(0, 314) / 100.0;
+      mStars24[i].speed = random(2, 10) / 100.0;
+    }
+    for (int i = 0; i < 2; i++) mShoot24[i].active = false;
+    for (int i = 0; i < 4; i++) mBirds[i].active = false;
+    anim24hInit = true;
+  }
   
+  spr.fillSprite(TFT_BLACK);
+  unsigned long now = millis();
+  
+  // Dibujar estrellas parpadeantes (noche)
+  for (int i = 0; i < 40; i++) {
+    int dx = mStars24[i].x - centerX;
+    int dy = mStars24[i].y - centerY;
+    float r = sqrt(dx*dx + dy*dy);
+    if (r > 91) {
+      float angle = atan2(dx, -dy) * 180.0 / M_PI;
+      if (angle < 0) angle += 360;
+      float h_star = angle / 15.0;
+      if (h_star < 7 || h_star > 20) {
+        mStars24[i].phase += mStars24[i].speed;
+        int b = mStars24[i].maxBrightness * abs(sin(mStars24[i].phase));
+        spr.drawPixel(mStars24[i].x, mStars24[i].y, spr.color565(b, b, b));
+      }
+    }
+  }
+
+  // Estrellas fugaces (noche)
+  for (int i = 0; i < 2; i++) {
+    if (!mShoot24[i].active) {
+      if (random(1000) < 5) {
+        mShoot24[i].active = true;
+        mShoot24[i].startMs = now;
+        mShoot24[i].durationMs = random(400, 1000);
+        mShoot24[i].len = random(5, 15);
+        if (random(2) == 0) {
+          mShoot24[i].x = random(0, 100);
+          mShoot24[i].y = random(0, 60);
+          mShoot24[i].vx = random(30, 80) / 10.0;
+          mShoot24[i].vy = random(10, 40) / 10.0;
+        } else {
+          mShoot24[i].x = random(140, 240);
+          mShoot24[i].y = random(0, 60);
+          mShoot24[i].vx = -random(30, 80) / 10.0;
+          mShoot24[i].vy = random(10, 40) / 10.0;
+        }
+      }
+    } else {
+      float t = (float)(now - mShoot24[i].startMs) / mShoot24[i].durationMs;
+      if (t > 1.0) {
+        mShoot24[i].active = false;
+      } else {
+        mShoot24[i].x += mShoot24[i].vx;
+        mShoot24[i].y += mShoot24[i].vy;
+        int dx = (int)mShoot24[i].x - centerX;
+        int dy = (int)mShoot24[i].y - centerY;
+        float r = sqrt(dx*dx + dy*dy);
+        if (r > 91) {
+          float angle = atan2(dx, -dy) * 180.0 / M_PI;
+          if (angle < 0) angle += 360;
+          float h_star = angle / 15.0;
+          if (h_star < 7 || h_star > 20) {
+            float tailX = mShoot24[i].x - (mShoot24[i].vx * mShoot24[i].len * 0.1);
+            float tailY = mShoot24[i].y - (mShoot24[i].vy * mShoot24[i].len * 0.1);
+            spr.drawLine((int)mShoot24[i].x, (int)mShoot24[i].y, (int)tailX, (int)tailY, TFT_WHITE);
+          }
+        }
+      }
+    }
+  }
+
+  // Pájaros (día)
+  for (int i = 0; i < 4; i++) {
+    if (!mBirds[i].active) {
+      if (random(1000) < 10) {
+        mBirds[i].active = true;
+        mBirds[i].startMs = now;
+        mBirds[i].durationMs = random(4000, 8000);
+        mBirds[i].flapSpeed = random(20, 50) / 100.0;
+        if (random(2) == 0) {
+          mBirds[i].x = 0;
+          mBirds[i].y = random(150, 240);
+          mBirds[i].vx = random(10, 30) / 10.0;
+          mBirds[i].vy = random(-10, 10) / 10.0;
+        } else {
+          mBirds[i].x = 240;
+          mBirds[i].y = random(150, 240);
+          mBirds[i].vx = -random(10, 30) / 10.0;
+          mBirds[i].vy = random(-10, 10) / 10.0;
+        }
+      }
+    } else {
+      float t = (float)(now - mBirds[i].startMs) / mBirds[i].durationMs;
+      if (t > 1.0 || mBirds[i].x < -10 || mBirds[i].x > 250 || mBirds[i].y < -10 || mBirds[i].y > 250) {
+        mBirds[i].active = false;
+      } else {
+        mBirds[i].x += mBirds[i].vx;
+        mBirds[i].y += mBirds[i].vy;
+        int dx = (int)mBirds[i].x - centerX;
+        int dy = (int)mBirds[i].y - centerY;
+        float r = sqrt(dx*dx + dy*dy);
+        if (r > 91) {
+          float angle = atan2(dx, -dy) * 180.0 / M_PI;
+          if (angle < 0) angle += 360;
+          float h_bird = angle / 15.0;
+          if (h_bird >= 7 && h_bird <= 20) {
+            float flapOffset = sin((now - mBirds[i].startMs) * mBirds[i].flapSpeed) * 3.0;
+            spr.drawLine((int)mBirds[i].x, (int)mBirds[i].y, (int)mBirds[i].x - 4, (int)mBirds[i].y - 2 + (int)flapOffset, spr.color565(150, 150, 150));
+            spr.drawLine((int)mBirds[i].x, (int)mBirds[i].y, (int)mBirds[i].x + 4, (int)mBirds[i].y - 2 + (int)flapOffset, spr.color565(150, 150, 150));
+          }
+        }
+      }
+    }
+  }
+
   uint16_t faceColor = spr.color565(30, 30, 30);
   spr.fillCircle(centerX, centerY, 90, faceColor);
   
@@ -508,14 +663,43 @@ void drawAnalog24hTimeUI(struct tm* timeinfo) {
   spr.drawString("WiFi", centerX + 45, centerY - 8);
   spr.drawString(String(wifiQuality) + "%", centerX + 45, centerY + 8);
 
-  // Icono del Sol indicando el centro de las horas de luz (aprox 13:30)
+  // Icono del clima en el centro de las horas de luz (aprox 13:30)
   float sunAngle = 13.5 * 15.0 * M_PI / 180.0;
   int sunX = centerX + 105 * sin(sunAngle);
   int sunY = centerY - 105 * cos(sunAngle);
-  spr.fillCircle(sunX, sunY, 8, TFT_YELLOW);
-  for(int i=0; i<8; i++) {
-     float a = i * 45 * M_PI / 180.0;
-     spr.drawLine(sunX + cos(a)*10, sunY + sin(a)*10, sunX + cos(a)*14, sunY + sin(a)*14, TFT_YELLOW);
+  
+  WeatherData cw24;
+  if (dataMutex != NULL) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    cw24 = currentWeather;
+    xSemaphoreGive(dataMutex);
+  } else {
+    cw24 = currentWeather;
+  }
+  
+  if (!cw24.valid || (cw24.prec == 0.0 && cw24.hr <= 85.0)) {
+    spr.fillCircle(sunX, sunY, 8, TFT_YELLOW);
+    for(int i=0; i<8; i++) {
+       float a = i * 45 * M_PI / 180.0;
+       spr.drawLine(sunX + cos(a)*10, sunY + sin(a)*10, sunX + cos(a)*14, sunY + sin(a)*14, TFT_YELLOW);
+    }
+  } else if (cw24.prec > 0.0) {
+    uint16_t cColor = spr.color565(100, 100, 100);
+    spr.fillCircle(sunX, sunY-3, 6, cColor);
+    spr.fillCircle(sunX - 6, sunY, 5, cColor);
+    spr.fillCircle(sunX + 6, sunY, 5, cColor);
+    spr.fillRect(sunX - 6, sunY, 12, 5, cColor);
+    int rainOffset = (millis() % 1000) / 200;
+    uint16_t rColor = spr.color565(0, 150, 255);
+    spr.drawLine(sunX - 4, sunY + 6 + rainOffset, sunX - 5, sunY + 8 + rainOffset, rColor);
+    spr.drawLine(sunX, sunY + 8 + rainOffset, sunX - 1, sunY + 10 + rainOffset, rColor);
+    spr.drawLine(sunX + 4, sunY + 6 + rainOffset, sunX + 3, sunY + 8 + rainOffset, rColor);
+  } else {
+    uint16_t cColor = spr.color565(180, 180, 180);
+    spr.fillCircle(sunX, sunY-3, 6, cColor);
+    spr.fillCircle(sunX - 6, sunY, 5, cColor);
+    spr.fillCircle(sunX + 6, sunY, 5, cColor);
+    spr.fillRect(sunX - 6, sunY, 12, 5, cColor);
   }
 
   // Icono de la Luna indicando el centro de las horas de oscuridad (aprox 01:30)
@@ -555,7 +739,10 @@ void drawAnalog24hTimeUI(struct tm* timeinfo) {
   // CPU temperature on the left side of the clock face
   spr.setTextColor(spr.color565(255, 150, 150), faceColor);
   spr.drawString("CPU", centerX - 45, centerY - 8);
-  spr.drawString(String((int)temperatureRead()) + "\xF7" + "C", centerX - 45, centerY + 8);
+  String cpuStr24 = String((int)temperatureRead());
+  spr.drawString(cpuStr24, centerX - 45, centerY + 8);
+  int cpuW24 = spr.textWidth(cpuStr24);
+  spr.drawCircle(centerX - 45 + cpuW24 / 2 + 5, centerY + 8 - 6, 2, spr.color565(255, 150, 150));
 
   spr.pushSprite(0, 0);
 }
@@ -1043,16 +1230,27 @@ void drawWeatherUI(struct tm* timeinfo) {
   spr.setTextFont(4); // 26px font
   spr.setTextSize(2);
   spr.setTextColor(tempColor, TFT_BLACK);
-  spr.drawString(String(cw.ta, 1) + " C", centerX, centerY + 25);
+  String taStr = String(cw.ta, 1);
+  spr.drawString(taStr, centerX, centerY + 25);
+  int taWidth = spr.textWidth(taStr);
+  spr.drawCircle(centerX + taWidth / 2 + 8, centerY + 25 - 18, 4, tempColor);
+  spr.drawCircle(centerX + taWidth / 2 + 8, centerY + 25 - 18, 3, tempColor);
   
   // Mostrar max y min a los lados (centradas verticalmente en el centro de la pantalla redonda)
   spr.setTextFont(2);
   spr.setTextSize(1);
-  spr.setTextColor(TFT_CYAN, TFT_BLACK);
-  spr.drawString(String(cw.tamin, 1) + "C", centerX - 95, centerY);
   
+  String taminStr = String(cw.tamin, 1);
+  spr.setTextColor(TFT_CYAN, TFT_BLACK);
+  spr.drawString(taminStr, centerX - 95, centerY + 40);
+  int taminWidth = spr.textWidth(taminStr);
+  spr.drawCircle(centerX - 95 + taminWidth / 2 + 5, centerY + 40 - 6, 2, TFT_CYAN);
+  
+  String tamaxStr = String(cw.tamax, 1);
   spr.setTextColor(TFT_ORANGE, TFT_BLACK);
-  spr.drawString(String(cw.tamax, 1) + "C", centerX + 95, centerY);
+  spr.drawString(tamaxStr, centerX + 95, centerY + 10);
+  int tamaxWidth = spr.textWidth(tamaxStr);
+  spr.drawCircle(centerX + 95 + tamaxWidth / 2 + 5, centerY + 10 - 6, 2, TFT_ORANGE);
   
   spr.setTextFont(2);
   spr.setTextSize(1);

@@ -386,7 +386,7 @@ void loop() {
   // ─────────────────────────────────────────────────────────────────────────
 
   if (currentState == STATE_TIME) {
-    if (now - lastDrawTime > 1000) {
+    if (now - lastDrawTime > 50) {
       if (timeDisplayMode == 0) drawTimeUI(&timeinfo);
       else if (timeDisplayMode == 1) drawAnalogTimeUI(&timeinfo);
       else drawAnalog24hTimeUI(&timeinfo);
