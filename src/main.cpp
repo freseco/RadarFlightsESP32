@@ -30,7 +30,7 @@ void networkTask(void *pvParameters) {
     unsigned long now = millis();
     if (now - lastWeatherFetch > 1800000 || lastWeatherFetch == 0) {
       if (WiFi.status() == WL_CONNECTED) {
-        fetchAemetWeather();
+        fetchOpenMeteoWeather();
       }
       lastWeatherFetch = millis();
     }

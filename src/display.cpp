@@ -1140,6 +1140,8 @@ void drawMoonUI(struct tm* timeinfo) {
 
 void drawWeatherIcon(int x, int y, int type) {
   // type: 0 = sun, 1 = moon, 2 = cloud, 3 = rain
+  // 4 = storm day no rain, 5 = storm night no rain
+  // 6 = storm day rain, 7 = storm night rain
   if (type == 0) { // Sun
     spr.fillCircle(x, y, 15, TFT_YELLOW);
     float angleOffset = (millis() % 36000) / 50.0; // Rotación: 1 grado cada 50ms
@@ -1151,26 +1153,42 @@ void drawWeatherIcon(int x, int y, int type) {
   } else if (type == 1) { // Moon
     spr.fillCircle(x, y, 14, spr.color565(220, 220, 220));
     spr.fillCircle(x + 6, y - 4, 11, TFT_BLACK);
-  } else if (type == 2) { // Cloud
+  } else if (type >= 2) {
     int cx = x + 8 * sin((millis() % 4000) / 4000.0 * 2.0 * M_PI); // Desplazamiento lateral, ciclo de 4s
-    uint16_t cColor = spr.color565(180, 180, 180);
-    spr.fillCircle(cx, y-2, 12, cColor);
-    spr.fillCircle(cx - 12, y + 4, 10, cColor);
-    spr.fillCircle(cx + 12, y + 4, 10, cColor);
-    spr.fillRect(cx - 12, y + 4, 24, 10, cColor);
-  } else if (type == 3) { // Rain
-    int cx = x + 8 * sin((millis() % 4000) / 4000.0 * 2.0 * M_PI); // Desplazamiento lateral, ciclo de 4s
-    uint16_t cColor = spr.color565(100, 100, 100);
-    spr.fillCircle(cx, y-5, 12, cColor);
-    spr.fillCircle(cx - 12, y, 10, cColor);
-    spr.fillCircle(cx + 12, y, 10, cColor);
-    spr.fillRect(cx - 12, y, 24, 10, cColor);
-    
-    int rainOffset = (millis() % 1000) / 100; // Lluvia cayendo, 0 a 9 cada 100ms
-    uint16_t rColor = spr.color565(0, 150, 255);
-    spr.drawLine(cx - 10, y + 10 + rainOffset, cx - 12, y + 14 + rainOffset, rColor);
-    spr.drawLine(cx, y + 10 + rainOffset, cx - 2, y + 14 + rainOffset, rColor);
-    spr.drawLine(cx + 10, y + 10 + rainOffset, cx + 8, y + 14 + rainOffset, rColor);
+    uint16_t cColor = (type == 2) ? spr.color565(180, 180, 180) : spr.color565(100, 100, 100);
+    int yOffset = (type == 2) ? 4 : 0;
+
+    // Draw background (sun or moon) for storm
+    if (type == 4 || type == 6) {
+      spr.fillCircle(cx + 12, y - 10 + yOffset, 8, TFT_YELLOW);
+    } else if (type == 5 || type == 7) {
+      spr.fillCircle(cx + 12, y - 10 + yOffset, 8, spr.color565(220, 220, 220));
+      spr.fillCircle(cx + 16, y - 12 + yOffset, 6, TFT_BLACK);
+    }
+
+    // Draw cloud
+    spr.fillCircle(cx, y - 5 + yOffset, 12, cColor);
+    spr.fillCircle(cx - 12, y + yOffset, 10, cColor);
+    spr.fillCircle(cx + 12, y + yOffset, 10, cColor);
+    spr.fillRect(cx - 12, y + yOffset, 24, 10, cColor);
+
+    // Draw rain
+    if (type == 3 || type == 6 || type == 7) {
+      int rainOffset = (millis() % 1000) / 100;
+      uint16_t rColor = spr.color565(0, 150, 255);
+      spr.drawLine(cx - 10, y + 10 + rainOffset, cx - 12, y + 14 + rainOffset, rColor);
+      spr.drawLine(cx, y + 10 + rainOffset, cx - 2, y + 14 + rainOffset, rColor);
+      spr.drawLine(cx + 10, y + 10 + rainOffset, cx + 8, y + 14 + rainOffset, rColor);
+    }
+
+    // Draw lightning
+    if (type >= 4 && type <= 7) {
+      if ((millis() % 1500) < 300) {
+        uint16_t bColor = TFT_YELLOW;
+        spr.fillTriangle(cx - 2, y + 8, cx + 4, y + 8, cx, y + 16, bColor);
+        spr.fillTriangle(cx, y + 14, cx + 6, y + 14, cx - 4, y + 24, bColor);
+      }
+    }
   }
 }
 
@@ -1192,10 +1210,7 @@ void drawWeatherUI(struct tm* timeinfo) {
     spr.setTextFont(2);
     spr.setTextSize(1);
     spr.drawString(tr("Sin datos del tiempo", "No weather data"), centerX, centerY);
-    if (pref_aemet_key == "") {
-      spr.setTextColor(TFT_YELLOW, TFT_BLACK);
-      spr.drawString(tr("Falta API Key", "Missing API Key"), centerX, centerY + 20);
-    }
+
     spr.pushSprite(0, 0);
     return;
   }
@@ -1209,13 +1224,19 @@ void drawWeatherUI(struct tm* timeinfo) {
   
   // Icon logic
   int iconType = 0;
-  bool isDay = (timeinfo->tm_hour >= 7 && timeinfo->tm_hour < 21);
-  if (cw.prec > 0.0) {
-    iconType = 3; // Rain
-  } else if (cw.hr > 85.0) {
-    iconType = 2; // Cloud
+  if (cw.weather_code == 95 || cw.weather_code == 96 || cw.weather_code == 99) {
+    bool hasRain = (cw.prec > 0.0 || cw.weather_code == 96 || cw.weather_code == 99);
+    if (cw.is_day) {
+      iconType = hasRain ? 6 : 4; // Storm day (rain/no-rain)
+    } else {
+      iconType = hasRain ? 7 : 5; // Storm night (rain/no-rain)
+    }
+  } else if (cw.weather_code >= 51 && cw.weather_code <= 86) {
+    iconType = 3; // Rain / Snow
+  } else if (cw.weather_code >= 1 && cw.weather_code <= 48) {
+    iconType = 2; // Cloud / Fog
   } else {
-    iconType = isDay ? 0 : 1; // Sun or Moon
+    iconType = cw.is_day ? 0 : 1; // Sun or Moon
   }
   
   drawWeatherIcon(centerX, centerY - 40, iconType);

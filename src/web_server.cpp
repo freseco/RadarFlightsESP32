@@ -83,37 +83,9 @@ const char* htmlForm = R"=====(
     </details>
 
     <details>
-      <summary>🌤️ El Tiempo (AEMET)</summary>
-      <label>🔑 API Key de AEMET:</label>
-      <input type='text' name='aemet_key' value='%AEMET_KEY%'>
-      <label>🏢 Estaciones AEMET (Auto-relleno):</label>
-      <select id='stationSelect' onchange='if(this.value){document.getElementById("aemet_idema").value=this.value;}'>
-        <option value=''>-- Selecciona una estación representativa --</option>
-        <option value='3195'>Madrid, Retiro (3195)</option>
-        <option value='3129'>Madrid, Aeropuerto (3129)</option>
-        <option value='0201D'>Barcelona, Aeropuerto (0201D)</option>
-        <option value='0076'>Barcelona, Raval (0076)</option>
-        <option value='8414A'>Valencia, Aeropuerto (8414A)</option>
-        <option value='4642E'>Sevilla, Aeropuerto (4642E)</option>
-        <option value='8500A'>Zaragoza, Aeropuerto (8500A)</option>
-        <option value='6155A'>Málaga, Aeropuerto (6155A)</option>
-        <option value='7228'>Murcia (7228)</option>
-        <option value='9771C'>Palma de Mallorca, Aerop. (9771C)</option>
-        <option value='C139E'>Gran Canaria, Aeropuerto (C139E)</option>
-        <option value='8025'>Alicante/Alacant (8025)</option>
-        <option value='5402'>Córdoba, Aeropuerto (5402)</option>
-        <option value='2422'>Valladolid (2422)</option>
-        <option value='1387'>A Coruña (1387)</option>
-        <option value='1014'>San Sebastián, Igueldo (1014)</option>
-        <option value='1208H'>Gijón, Musel (1208H)</option>
-        <option value='1428'>Santiago de Compostela, Aerop. (1428)</option>
-        <option value='C447A'>Tenerife Norte, Aeropuerto (C447A)</option>
-        <option value='3469A'>Cáceres (3469A)</option>
-        <option value='4452'>Badajoz (4452)</option>
-        <option value='4358X'>Don Benito (4358X)</option>
-      </select>
-      <label>📍 ID de Estación (Manual o auto por GPS):</label>
-      <input type='text' name='aemet_idema' id='aemet_idema' value='%AEMET_IDEMA%'>
+    <details>
+      <summary>🌤️ El Tiempo (Open-Meteo)</summary>
+      <p style='color:#ccc; font-size:14px; padding: 0 10px;'>El tiempo se obtiene automáticamente y gratis desde Open-Meteo basado en las coordenadas (Latitud y Longitud) de tu ubicación. No se requiere clave API.</p>
     </details>
 
     <details>
@@ -147,7 +119,7 @@ const char* htmlForm = R"=====(
       <div style='text-align: left; margin-left: 20px; color: #ccc; font-size: 16px; margin-bottom: 20px;'>
         <div class="chk-container"><input type='checkbox' name='sh_radar' value='1' %CHK_RADAR%> Radar</div>
         <div class="chk-container"><input type='checkbox' name='sh_time' value='1' %CHK_TIME%> Reloj</div>
-        <div class="chk-container"><input type='checkbox' name='sh_wea' value='1' %CHK_WEA%> Tiempo (AEMET)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_wea' value='1' %CHK_WEA%> Tiempo (Open-Meteo)</div>
         <div class="chk-container"><input type='checkbox' name='sh_moon' value='1' %CHK_MOON%> Fase Lunar</div>
         <div class="chk-container"><input type='checkbox' name='sh_horiz' value='1' %CHK_HORIZ%> Horizonte Artificial</div>
         <div class="chk-container"><input type='checkbox' name='sh_iss' value='1' %CHK_ISS%> ISS Tracker</div>
@@ -182,7 +154,7 @@ const char* htmlForm = R"=====(
     <details>
       <summary>📊 Estado y Estadísticas</summary>
       <p style='color: #ccc; font-size: 14px;'><b>Temp CPU:</b> <span id='stat_cpu'>%CPU_TEMP%</span> °C</p>
-      <p style='color: #ccc; font-size: 14px;'><b>Temp AEMET:</b> <span id='stat_aemet'>%AEMET_TEMP%</span> °C</p>
+      <p style='color: #ccc; font-size: 14px;'><b>Temp Ext:</b> <span id='stat_aemet'>%AEMET_TEMP%</span> °C</p>
       <p style='color: #ccc; font-size: 14px;'><b>Aviones Mostrados:</b> <span id='stat_planes'>%PLANES_COUNT%</span></p>
       <p style='color: #ccc; font-size: 14px; margin-bottom: 5px;'><b>Registro de Errores:</b></p>
       <div id='stat_errors' style='background: #333; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; white-space: pre-wrap; color: #ffeb3b;'>%ERROR_LOG%</div>
@@ -204,8 +176,7 @@ const char* htmlForm = R"=====(
         s_loc: "🌍 Ubicación y Área", l_geoip: "🌍 Autolocalizar por IP:", o_geo1: "Sí (Ignora manuales)", o_geo0: "No (Usar manuales)",
         l_airports: "🏢 Aeropuertos Famosos (Auto-relleno):", o_asel: "-- Selecciona un aeropuerto --",
         l_lat: "📍 Latitud (Manual):", l_lon: "📍 Longitud (Manual):", btn_geo: "🧭 Obtener por Red (IP)", l_rad: "📡 Radio del Radar (km):",
-        s_wea: "🌤️ El Tiempo (AEMET)", l_api: "🔑 API Key de AEMET:", l_sta: "🏢 Estaciones AEMET (Auto-relleno):",
-        o_ssel: "-- Selecciona una estación representativa --", l_idema: "📍 ID de Estación (Manual o auto por GPS):",
+        s_wea: "🌤️ El Tiempo (Open-Meteo)",
         s_time: "🕒 Hora y Fecha", l_utc: "🕒 Zona Horaria (Horas desde UTC):", l_dst: "☀️ Horario de Verano (+1h):", o_d1: "Activado", o_d0: "Desactivado",
         l_clock: "⌚ Modo de Reloj:", o_c0: "Ciclar todos", o_c1: "Solo Digital", o_c2: "Solo Analógico 12h", o_c3: "Solo Analógico 24h",
         s_vis: "⚙️ Ajustes Visuales", l_scr_time: "⏳ Tiempo de cada pantalla (segundos):", l_rad_time: "⏳ Tiempo en radar (segundos):", l_maxp: "✈️ Máx. Aviones Visibles:", l_col: "🎨 Color de los Aviones:",
@@ -219,8 +190,7 @@ const char* htmlForm = R"=====(
         s_loc: "🌍 Location and Area", l_geoip: "🌍 Auto-locate by IP:", o_geo1: "Yes (Ignore manual)", o_geo0: "No (Use manual)",
         l_airports: "🏢 Famous Airports (Auto-fill):", o_asel: "-- Select an airport --",
         l_lat: "📍 Latitude (Manual):", l_lon: "📍 Longitude (Manual):", btn_geo: "🧭 Get by Network (IP)", l_rad: "📡 Radar Radius (km):",
-        s_wea: "🌤️ Weather (AEMET)", l_api: "🔑 AEMET API Key:", l_sta: "🏢 AEMET Stations (Auto-fill):",
-        o_ssel: "-- Select a representative station --", l_idema: "📍 Station ID (Manual or auto by GPS):",
+        s_wea: "🌤️ Weather (Open-Meteo)",
         s_time: "🕒 Time and Date", l_utc: "🕒 Timezone (Hours from UTC):", l_dst: "☀️ Daylight Saving Time (+1h):", o_d1: "Enabled", o_d0: "Disabled",
         l_clock: "⌚ Clock Mode:", o_c0: "Cycle all", o_c1: "Digital Only", o_c2: "Analog 12h Only", o_c3: "Analog 24h Only",
         s_vis: "⚙️ Visual Settings", l_scr_time: "⏳ Screen Time (seconds):", l_rad_time: "⏳ Radar Time (seconds):", l_maxp: "✈️ Max Visible Planes:", l_col: "🎨 Planes Color:",
@@ -256,8 +226,7 @@ const char* htmlForm = R"=====(
       setLabelByInputName('lat', d.l_lat);
       setLabelByInputName('lon', d.l_lon);
       setLabelByInputName('rad', d.l_rad);
-      setLabelByInputName('aemet_key', d.l_api);
-      setLabelByInputName('aemet_idema', d.l_idema);
+
       setLabelByInputName('utc_offset', d.l_utc);
       setLabelByInputName('dst', d.l_dst);
       setLabelByInputName('clock_mode', d.l_clock);
@@ -273,13 +242,12 @@ const char* htmlForm = R"=====(
       // Selects that don't follow the pattern
       const airportSel = document.getElementById('airportSelect');
       if (airportSel && airportSel.previousElementSibling) airportSel.previousElementSibling.innerText = d.l_airports;
-      const stationSel = document.getElementById('stationSelect');
-      if (stationSel && stationSel.previousElementSibling) stationSel.previousElementSibling.innerText = d.l_sta;
+
 
       txt("select[name='geoip'] option[value='1']", d.o_geo1);
       txt("select[name='geoip'] option[value='0']", d.o_geo0);
       txt("#airportSelect option[value='']", d.o_asel);
-      txt("#stationSelect option[value='']", d.o_ssel);
+
       txt("select[name='dst'] option[value='1']", d.o_d1);
       txt("select[name='dst'] option[value='0']", d.o_d0);
       txt("select[name='clock_mode'] option[value='0']", d.o_c0);
@@ -469,8 +437,7 @@ void handleRoot() {
   html.replace("%AIRPORT_ID%", pref_airport_id);
   html.replace("%RAD%", String((int)pref_rad));
   html.replace("%MAXP%", String(pref_max_planes));
-  html.replace("%AEMET_KEY%", pref_aemet_key);
-  html.replace("%AEMET_IDEMA%", pref_idema);
+
   html.replace("%N2YO_KEY%", pref_n2yo_key);
   html.replace("%UTC_OFFSET%", String(pref_offset / 3600));
   html.replace("%DST_ON%", pref_dst ? "selected" : "");
@@ -605,8 +572,7 @@ void handleSave() {
   }
 
   preferences.putString("airport_id", server.arg("airport_id"));
-  preferences.putString("aemet_key", server.arg("aemet_key"));
-  preferences.putString("aemet_idema", server.arg("aemet_idema"));
+
   if (server.hasArg("n2yo_key")) {
     preferences.putString("n2yo_key", server.arg("n2yo_key"));
     pref_n2yo_key = server.arg("n2yo_key");
@@ -628,8 +594,7 @@ void handleSave() {
   pref_max_planes = server.arg("maxp").toInt();
   pref_color = server.arg("color");
   pref_airport_id = server.arg("airport_id");
-  pref_aemet_key = server.arg("aemet_key");
-  pref_idema = server.arg("aemet_idema");
+
   if (server.hasArg("utc_offset")) {
     pref_offset = server.arg("utc_offset").toInt() * 3600;
     pref_dst = server.arg("dst") == "1";

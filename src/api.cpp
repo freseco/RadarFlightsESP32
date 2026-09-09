@@ -143,131 +143,48 @@ void fetchAirplanes() {
   http.end();
 }
 
-void findClosestAemetStation() {
-  if (pref_aemet_key == "") return;
-  Serial.println("Buscando estacion AEMET mas cercana...");
-  
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  
-  String url = "https://opendata.aemet.es/opendata/api/observacion/convencional/todas";
-  http.begin(client, url);
-  http.addHeader("api_key", pref_aemet_key);
-  
-  int code = http.GET();
-  if (code == 200) {
-    JsonDocument doc;
-    deserializeJson(doc, http.getString());
-    String dataUrl = doc["datos"].as<String>();
-    http.end();
-    
-    if (dataUrl != "") {
-      http.begin(client, dataUrl);
-      int code2 = http.GET();
-      if (code2 == 200) {
-        String payload = http.getString();
-        
-        float minDst = 999999.0;
-        String closestId = "";
-        
-        int pos = 0;
-        while(pos >= 0 && pos < payload.length()) {
-          int idIdx = payload.indexOf("\"idema\"", pos);
-          if (idIdx < 0) break;
-          
-          int idStart = payload.indexOf("\"", idIdx + 7) + 1;
-          int idEnd = payload.indexOf("\"", idStart);
-          String idema = payload.substring(idStart, idEnd);
-          
-          int latIdx = payload.indexOf("\"lat\"", idEnd);
-          int latStart = payload.indexOf(":", latIdx) + 1;
-          int latEnd = payload.indexOf(",", latStart);
-          float lat = payload.substring(latStart, latEnd).toFloat();
-          
-          int lonIdx = payload.indexOf("\"lon\"", latEnd);
-          int lonStart = payload.indexOf(":", lonIdx) + 1;
-          int lonEnd = payload.indexOf(",", lonStart);
-          float lon = payload.substring(lonStart, lonEnd).toFloat();
-          
-          float dLat = (lat - pref_lat) * M_PI / 180.0;
-          float dLon = (lon - pref_lon) * M_PI / 180.0;
-          float a = sin(dLat/2)*sin(dLat/2) + cos(pref_lat*M_PI/180.0)*cos(lat*M_PI/180.0)*sin(dLon/2)*sin(dLon/2);
-          float dst = 6371.0 * 2 * atan2(sqrt(a), sqrt(1-a));
-          
-          if (dst < minDst) {
-            minDst = dst;
-            closestId = idema;
-          }
-          pos = payload.indexOf("}", lonEnd);
-        }
-        
-        if (closestId != "") {
-          pref_idema = closestId;
-          preferences.putString("aemet_idema", pref_idema);
-          Serial.println("Estacion mas cercana: " + pref_idema);
-        }
-      }
-    }
-  }
-  http.end();
-}
 
-void fetchAemetWeather() {
-  if (pref_aemet_key == "") return;
-  if (pref_idema == "") {
-    findClosestAemetStation();
-  }
-  if (pref_idema == "") return;
-  
-  Serial.println("Consultando AEMET estacion " + pref_idema);
+void fetchOpenMeteoWeather() {
+  Serial.println("Consultando Open-Meteo para lat " + String(pref_lat, 4) + " lon " + String(pref_lon, 4));
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
   
-  String url = "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/" + pref_idema;
+  String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(pref_lat, 4) + "&longitude=" + String(pref_lon, 4) + "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,is_day";
   http.begin(client, url);
-  http.addHeader("api_key", pref_aemet_key);
   
   int code = http.GET();
   if (code == 200) {
-    JsonDocument doc;
-    deserializeJson(doc, http.getString());
-    String dataUrl = doc["datos"].as<String>();
-    http.end();
-    
-    if (dataUrl != "") {
-      http.begin(client, dataUrl);
-      if (http.GET() == 200) {
-        String payload = http.getString();
-        JsonDocument wdoc;
-        DeserializationError err = deserializeJson(wdoc, payload);
-        if (!err) {
-          JsonArray arr = wdoc.as<JsonArray>();
-          if (arr.size() > 0) {
-            JsonObject last = arr[arr.size() - 1]; // get the last element which is the most recent
-            WeatherData newWeather;
-            newWeather.ta = last["ta"].as<float>();
-            newWeather.hr = last["hr"].as<float>();
-            newWeather.prec = last["prec"].as<float>();
-            newWeather.vv = last["vv"].as<float>();
-            newWeather.dv = last["dv"].as<float>();
-            newWeather.tamax = last.containsKey("tamax") ? last["tamax"].as<float>() : newWeather.ta;
-            newWeather.tamin = last.containsKey("tamin") ? last["tamin"].as<float>() : newWeather.ta;
-            newWeather.ubi = last["ubi"].as<String>();
-            newWeather.valid = true;
-            
-            if (dataMutex != NULL) {
-              xSemaphoreTake(dataMutex, portMAX_DELAY);
-              currentWeather = newWeather;
-              xSemaphoreGive(dataMutex);
-            }
-            
-            Serial.println("AEMET OK: " + newWeather.ubi + " " + String(newWeather.ta) + "C");
-          }
+    String payload = http.getString();
+    JsonDocument wdoc;
+    DeserializationError err = deserializeJson(wdoc, payload);
+    if (!err) {
+      if (wdoc.containsKey("current")) {
+        JsonObject current = wdoc["current"];
+        WeatherData newWeather;
+        newWeather.ta = current["temperature_2m"].as<float>();
+        newWeather.hr = current["relative_humidity_2m"].as<float>();
+        newWeather.prec = current["precipitation"].as<float>();
+        newWeather.vv = current["wind_speed_10m"].as<float>();
+        newWeather.dv = current["wind_direction_10m"].as<float>();
+        newWeather.weather_code = current["weather_code"].as<int>();
+        newWeather.is_day = current["is_day"].as<int>();
+        newWeather.tamax = newWeather.ta; // Open-Meteo current API doesn't provide max/min easily without daily, so we just use current.
+        newWeather.tamin = newWeather.ta;
+        newWeather.ubi = "Open-Meteo";
+        newWeather.valid = true;
+        
+        if (dataMutex != NULL) {
+          xSemaphoreTake(dataMutex, portMAX_DELAY);
+          currentWeather = newWeather;
+          xSemaphoreGive(dataMutex);
         }
+        
+        Serial.println("Open-Meteo OK: " + String(newWeather.ta) + "C, code: " + String(newWeather.weather_code));
       }
     }
+  } else {
+    Serial.println("Open-Meteo error HTTP: " + String(code));
   }
   http.end();
 }

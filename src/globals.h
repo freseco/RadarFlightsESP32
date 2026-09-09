@@ -120,6 +120,8 @@ struct WeatherData {
   float dv;
   float tamax;
   float tamin;
+  int weather_code;
+  int is_day;
   String ubi;
   bool valid;
 };

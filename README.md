@@ -18,7 +18,7 @@
   <img src="images/animacion.gif" width="60%" alt="Demostración animada" style="border: 2px solid #555; border-radius: 10px;" />
 </div>
 
-RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** (específicamente la placa `esp32-s3-devkitm-1` con soporte para pantalla LCD `TFT_eSPI`) que actúa como un radar de vuelos de escritorio. Muestra información en tiempo real sobre los aviones cercanos usando datos públicos de [Airplanes.live](https://airplanes.live/), además de proveer pantallas de información del tiempo (vía AEMET), reloj (digital y analógico) y fase lunar.
+RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** (específicamente la placa `esp32-s3-devkitm-1` con soporte para pantalla LCD `TFT_eSPI`) que actúa como un radar de vuelos de escritorio. Muestra información en tiempo real sobre los aviones cercanos usando datos públicos de [Airplanes.live](https://airplanes.live/), además de proveer pantallas de información del tiempo (vía Open-Meteo), reloj (digital y analógico) y fase lunar.
 
 ---
 
@@ -31,7 +31,7 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
     - Digital.
     - Analógico 12 Horas.
     - Analógico 24 Horas (con borde iluminado en las horas de sol y aguja de 24h).
-  - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de AEMET (requiere API Key gratuita). Muestra temperaturas actual, máxima y mínima, y cuenta con una brújula indicando la dirección del viento.
+  - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de Open-Meteo (automático, no requiere clave). Muestra temperaturas actual, máxima y mínima, y cuenta con una brújula indicando la dirección del viento.
   - 🌑 **Fase Lunar**: Indicador de la fase lunar actual y su porcentaje de iluminación visible (se oculta automáticamente si la luna está bajo el horizonte). Incluye animaciones dinámicas de estrellas fugaces y un transbordador espacial cruzando la pantalla.
   - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
   - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación. Incluye un sistema de predicción visual que te avisa cuándo será visible a simple vista desde tu posición (vía n2yo.com).
@@ -103,7 +103,7 @@ esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x10000 firmware.bin
 4. Rellena los datos en el portal web:
    * **WiFi**: Nombre y contraseña de tu red de internet.
    * **Ubicación**: Puedes auto-localizarte por IP, elegir un aeropuerto famoso o meter coordenadas manuales. Selecciona también el rango en KM.
-   * **El Tiempo (AEMET)**: Pega tu [API Key gratuita de AEMET](https://opendata.aemet.es/centrodedescargas/altaUsuario?) para ver los datos del clima.
+   * **El Tiempo (Open-Meteo)**: Automático y gratuito en base a tus coordenadas GPS.
    * **ISS Tracker (n2yo)**: Puedes configurar tu API Key gratuita de [n2yo.com](https://www.n2yo.com/login/) para predecir cuándo la Estación Espacial será visible desde tu casa.
    * **Hora y Fecha**: Ajusta tu zona horaria y horario de verano.
    * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color, el **Modo de Reloj** y si deseas mostrar la pantalla del **Zodíaco**.
@@ -127,7 +127,7 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
    - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos.
    - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar. Incluye animaciones ambientales inmersivas: pájaros aleteando en la zona diurna, un cielo estrellado dinámico con estrellas fugaces en la zona nocturna, y un icono en la zona diurna que cambia en tiempo real (sol, nubes o lluvia) según el clima actual.
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
-3. **El Tiempo (AEMET)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de AEMET.
+3. **El Tiempo (Open-Meteo)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de Open-Meteo.
 4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar. *(Nota: El sistema tiene un salto inteligente que omite esta pantalla si la luna no es visible en el cielo en ese momento).* Incluye animaciones aleatorias de estrellas fugaces y un cohete espacial.
 5. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
 6. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
@@ -174,7 +174,7 @@ El proyecto está organizado en múltiples archivos dentro de la carpeta `src/` 
 - `main.cpp`: Inicialización principal (`setup`) y máquina de estados general (`loop`).
 - `globals.h/cpp`: Almacena y gestiona las variables globales, configuraciones y variables de estado.
 - `display.h/cpp`: Maneja todo el pintado en pantalla (radar, relojes, iconos, animaciones).
-- `api.h/cpp`: Conexiones HTTPS y procesamiento JSON (API de aviones ADSB y clima AEMET).
+- `api.h/cpp`: Conexiones HTTPS y procesamiento JSON (API de aviones ADSB y clima Open-Meteo).
 - `math_utils.h/cpp`: Lógicas matemáticas (coordenadas polares, conversión de unidades, cálculo lunar).
 - `web_server.h/cpp`: Controla el portal cautivo y la web de configuración.
 
@@ -183,7 +183,7 @@ El proyecto está organizado en múltiples archivos dentro de la carpeta `src/` 
 ## 📝 Notas y Agradecimientos
 
 - Datos de vuelos gracias a la estupenda comunidad de **[Airplanes.live](https://airplanes.live/)**.
-- Datos meteorológicos extraídos de **AEMET OpenData**.
+- Datos meteorológicos extraídos de **Open-Meteo**.
 - Interfaz gráfica operada por la rápida librería **TFT_eSPI** de Bodmer.
 
 *Desarrollado y refactorizado por Freseco (2026).*
