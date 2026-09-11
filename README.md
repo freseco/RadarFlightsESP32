@@ -18,7 +18,7 @@
   <img src="images/animacion.gif" width="60%" alt="Demostración animada" style="border: 2px solid #555; border-radius: 10px;" />
 </div>
 
-RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** (específicamente la placa `esp32-s3-devkitm-1` con soporte para pantalla LCD `TFT_eSPI`) que actúa como un radar de vuelos de escritorio. Muestra información en tiempo real sobre los aviones cercanos usando datos públicos de [Airplanes.live](https://airplanes.live/), además de proveer pantallas de información del tiempo (vía Open-Meteo), reloj (digital y analógico) y fase lunar.
+RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** (específicamente la placa `esp32-s3-devkitm-1` con soporte para pantalla LCD `TFT_eSPI`) que actúa como un radar de vuelos de escritorio. Muestra información en tiempo real sobre los aviones cercanos usando datos públicos de [OpenSky Network](https://opensky-network.org/), además de proveer pantallas de información del tiempo (vía Open-Meteo), calidad del aire (vía WAQI), reloj (digital y analógico) y fase lunar.
 
 ---
 
@@ -32,7 +32,8 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
     - Analógico 12 Horas.
     - Analógico 24 Horas (con borde iluminado en las horas de sol y aguja de 24h).
   - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de Open-Meteo (automático, no requiere clave). Muestra temperaturas actual, máxima y mínima, y cuenta con una brújula indicando la dirección del viento.
-  - 🌑 **Fase Lunar**: Indicador de la fase lunar actual y su porcentaje de iluminación visible (se oculta automáticamente si la luna está bajo el horizonte). Incluye animaciones dinámicas de estrellas fugaces y un transbordador espacial cruzando la pantalla.
+  - 🍃 **Calidad del Aire (AQI)**: Monitoreo en tiempo real del índice de calidad del aire (AQI) de la estación más cercana (mediante API de WAQI), indicando el nivel de contaminación y sus componentes.
+  - 🌑 **Fase Lunar**: Indicador de la fase lunar actual en la bóveda celeste. Incluye una apertura clásica de reloj mecánico en el reloj analógico, animaciones dinámicas de estrellas fugaces y un transbordador espacial.
   - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
   - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación. Incluye un sistema de predicción visual que te avisa cuándo será visible a simple vista desde tu posición (vía n2yo.com).
   - ☀️ **Reloj Astronómico**: Representación gráfica en un círculo de 24h de la posición en el cielo del Sol y la Luna utilizando trigonometría (día y noche).
@@ -104,9 +105,10 @@ esptool.py --chip esp32s3 --baud 460800 write_flash -z 0x10000 firmware.bin
    * **WiFi**: Nombre y contraseña de tu red de internet.
    * **Ubicación**: Puedes auto-localizarte por IP, elegir un aeropuerto famoso o meter coordenadas manuales. Selecciona también el rango en KM.
    * **El Tiempo (Open-Meteo)**: Automático y gratuito en base a tus coordenadas GPS.
+   * **Calidad del Aire (WAQI)**: Necesitas proporcionar un token gratuito de AQICN para obtener los datos de polución.
    * **ISS Tracker (n2yo)**: Puedes configurar tu API Key gratuita de [n2yo.com](https://www.n2yo.com/login/) para predecir cuándo la Estación Espacial será visible desde tu casa.
    * **Hora y Fecha**: Ajusta tu zona horaria y horario de verano.
-   * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color, el **Modo de Reloj** y si deseas mostrar la pantalla del **Zodíaco**.
+   * **Ajustes Visuales**: Escoge cuántos aviones máximos mostrar, su color, el **Modo de Reloj** y si deseas mostrar la pantalla del **Zodíaco** o de **Calidad del Aire**.
 5. Haz clic en **Guardar y Reiniciar**. ¡El radar se conectará y empezará a funcionar!
 
 <div align="center">
@@ -124,13 +126,14 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
 1. **Pantalla de Radar**: Muestra la ubicación de los aviones, helicópteros y otras aeronaves alrededor de tu ubicación, indicando su altitud, distancia y código de vuelo, con una interfaz estilo radar clásico.
 2. **Relojes**:
    - **Digital**: Reloj estándar en formato HH:MM.
-   - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos.
+   - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos. Cuenta con apertura estilo reloj mecánico para la fase lunar.
    - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar. Incluye animaciones ambientales inmersivas: pájaros aleteando en la zona diurna, un cielo estrellado dinámico con estrellas fugaces en la zona nocturna, y un icono en la zona diurna que cambia en tiempo real (sol, nubes o lluvia) según el clima actual.
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
 3. **El Tiempo (Open-Meteo)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de Open-Meteo.
-4. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar. *(Nota: El sistema tiene un salto inteligente que omite esta pantalla si la luna no es visible en el cielo en ese momento).* Incluye animaciones aleatorias de estrellas fugaces y un cohete espacial.
-5. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
-6. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
+4. **Calidad del Aire (AQI)**: Visualización colorida del índice de calidad del aire actual, mostrando contaminantes (PM2.5, PM10, Ozono) y la estación de medición.
+5. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar.
+6. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
+7. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
 7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche.
 8. **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual. Incluye un cielo animado con estrellas de fondo que titilan y estrellas fugaces que cruzan la pantalla esporádicamente.
 
@@ -182,8 +185,8 @@ El proyecto está organizado en múltiples archivos dentro de la carpeta `src/` 
 
 ## 📝 Notas y Agradecimientos
 
-- Datos de vuelos gracias a la estupenda comunidad de **[Airplanes.live](https://airplanes.live/)**.
-- Datos meteorológicos extraídos de **Open-Meteo**.
+- Datos de vuelos gracias a la comunidad de **[OpenSky Network](https://opensky-network.org/)**.
+- Datos meteorológicos extraídos de **Open-Meteo** y Calidad del Aire de **WAQI**.
 - Interfaz gráfica operada por la rápida librería **TFT_eSPI** de Bodmer.
 
 *Desarrollado y refactorizado por Freseco (2026).*

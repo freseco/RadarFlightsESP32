@@ -69,6 +69,20 @@ const char* htmlForm = R"=====(
         <option value='50.0379,8.5622,FRA'>Frankfurt (FRA) 🇩🇪</option>
         <option value='33.6407,-84.4277,ATL'>Atlanta Hartsfield (ATL) 🇺🇸</option>
         <option value='1.3644,103.9915,SIN'>Singapur Changi (SIN) 🇸🇬</option>
+        <option value='-23.4356,-46.4731,GRU'>São Paulo Guarulhos (GRU) 🇧🇷</option>
+        <option value='4.7016,-74.1469,BOG'>Bogotá El Dorado (BOG) 🇨🇴</option>
+        <option value='-34.8222,-58.5358,EZE'>Buenos Aires Ezeiza (EZE) 🇦🇷</option>
+        <option value='-33.3930,-70.7858,SCL'>Santiago (SCL) 🇨🇱</option>
+        <option value='-12.0219,-77.1143,LIM'>Lima Jorge Chávez (LIM) 🇵🇪</option>
+        <option value='18.5674,-68.3634,PUJ'>Punta Cana (PUJ) 🇩🇴</option>
+        <option value='18.4394,-66.0018,SJU'>San Juan (SJU) 🇵🇷</option>
+        <option value='22.9892,-82.4091,HAV'>La Habana (HAV) 🇨🇺</option>
+        <option value='-26.1367,28.2411,JNB'>Johannesburgo (JNB) 🇿🇦</option>
+        <option value='30.1219,31.4056,CAI'>El Cairo (CAI) 🇪🇬</option>
+        <option value='-33.9715,18.6021,CPT'>Ciudad del Cabo (CPT) 🇿🇦</option>
+        <option value='8.9778,38.7993,ADD'>Adís Abeba (ADD) 🇪🇹</option>
+        <option value='-1.3192,36.9278,NBO'>Nairobi (NBO) 🇰🇪</option>
+        <option value='33.3675,-7.5899,CMN'>Casablanca (CMN) 🇲🇦</option>
       </select>
       
       <input type='hidden' name='airport_id' id='airport_id' value='%AIRPORT_ID%'>
@@ -82,11 +96,7 @@ const char* htmlForm = R"=====(
       <input type='number' step='1' name='rad' value='%RAD%'>
     </details>
 
-    <details>
-    <details>
-      <summary>🌤️ El Tiempo (Open-Meteo)</summary>
-      <p style='color:#ccc; font-size:14px; padding: 0 10px;'>El tiempo se obtiene automáticamente y gratis desde Open-Meteo basado en las coordenadas (Latitud y Longitud) de tu ubicación. No se requiere clave API.</p>
-    </details>
+
 
     <details>
       <summary>🛸 ISS Tracker (n2yo.com)</summary>
@@ -119,12 +129,15 @@ const char* htmlForm = R"=====(
       <div style='text-align: left; margin-left: 20px; color: #ccc; font-size: 16px; margin-bottom: 20px;'>
         <div class="chk-container"><input type='checkbox' name='sh_radar' value='1' %CHK_RADAR%> Radar</div>
         <div class="chk-container"><input type='checkbox' name='sh_time' value='1' %CHK_TIME%> Reloj</div>
-        <div class="chk-container"><input type='checkbox' name='sh_wea' value='1' %CHK_WEA%> Tiempo (Open-Meteo)</div>
+
         <div class="chk-container"><input type='checkbox' name='sh_moon' value='1' %CHK_MOON%> Fase Lunar</div>
         <div class="chk-container"><input type='checkbox' name='sh_horiz' value='1' %CHK_HORIZ%> Horizonte Artificial</div>
         <div class="chk-container"><input type='checkbox' name='sh_iss' value='1' %CHK_ISS%> ISS Tracker</div>
         <div class="chk-container"><input type='checkbox' name='sh_sun' value='1' %CHK_SUN%> Arco Solar</div>
         <div class="chk-container"><input type='checkbox' name='sh_zodiac' value='1' %CHK_ZODIAC%> Zodíaco</div>
+        <div class="chk-container"><input type='checkbox' name='sh_elec' value='1' %CHK_ELEC%> Precio Luz (€/kWh)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_eclock' value='1' %CHK_ECLOCK%> Reloj Luz (Esfera)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_aqi' value='1' %CHK_AQI%> 🌬️ Calidad del Aire (AQI)</div>
       </div>
       <label>⏳ Tiempo de cada pantalla (segundos):</label>
       <input type='number' name='screen_time' value='%SCREEN_TIME%'>
@@ -165,7 +178,7 @@ const char* htmlForm = R"=====(
 
   <div style="text-align: center; margin-top: 30px;">
     <a href="/update_page" style="display: block; background: #ff9800; color: white; padding: 12px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-bottom: 15px;">🔄 Actualizar Firmware (OTA)</a>
-    <a href="https://globe.airplanes.live/" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 16px;">🌍 Ver Mapa Global en Airplanes.live</a>
+    <a href="https://opensky-network.org/network/explorer" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 16px;">🌍 Ver Mapa Global en OpenSky Network</a>
   </div>
 
   <script>
@@ -206,7 +219,7 @@ const char* htmlForm = R"=====(
       document.querySelector("p.sub").innerText = d.sub;
       
       const sums = document.querySelectorAll("summary");
-      sums[0].innerText = d.s_wifi; sums[1].innerText = d.s_loc; sums[2].innerText = d.s_wea; 
+      sums[0].innerText = d.s_wifi; sums[1].innerText = d.s_loc; 
       sums[3].innerText = d.s_time; sums[4].innerText = d.s_vis; sums[5].innerText = d.s_stat;
       
       const txt = (selector, text) => { const el = document.querySelector(selector); if(el) el.innerText = text; };
@@ -470,6 +483,9 @@ void handleRoot() {
   html.replace("%CHK_ISS%", pref_show_iss ? "checked" : "");
   html.replace("%CHK_SUN%", pref_show_sun ? "checked" : "");
   html.replace("%CHK_ZODIAC%", pref_show_zodiac ? "checked" : "");
+  html.replace("%CHK_ELEC%", pref_show_electricity ? "checked" : "");
+  html.replace("%CHK_ECLOCK%", pref_show_elec_clock ? "checked" : "");
+  html.replace("%CHK_AQI%", pref_show_aqi ? "checked" : "");
   
   html.replace("%FW_VER%", FIRMWARE_VERSION);
   
@@ -543,7 +559,10 @@ void handleSave() {
   pref_show_iss = server.hasArg("sh_iss");
   pref_show_sun = server.hasArg("sh_sun");
   pref_show_zodiac = server.hasArg("sh_zodiac");
-  
+  pref_show_electricity = server.hasArg("sh_elec");
+  pref_show_elec_clock = server.hasArg("sh_eclock");
+  pref_show_aqi = server.hasArg("sh_aqi");
+
   preferences.putBool("sh_radar", pref_show_radar);
   preferences.putBool("sh_time", pref_show_time);
   preferences.putBool("sh_wea", pref_show_weather);
@@ -552,6 +571,10 @@ void handleSave() {
   preferences.putBool("sh_iss", pref_show_iss);
   preferences.putBool("sh_sun", pref_show_sun);
   preferences.putBool("sh_zodiac", pref_show_zodiac);
+  preferences.putBool("sh_elec", pref_show_electricity);
+  
+  preferences.putBool("sh_eclock", pref_show_elec_clock);
+  preferences.putBool("sh_aqi", pref_show_aqi);
   
   if (server.hasArg("screen_time")) {
     preferences.putInt("screen_time", server.arg("screen_time").toInt());
@@ -624,6 +647,9 @@ void handleSave() {
   else if (currentState == STATE_ISS && pref_show_iss) currentEnabled = true;
   else if (currentState == STATE_SUN && pref_show_sun) currentEnabled = true;
   else if (currentState == STATE_ZODIAC && pref_show_zodiac) currentEnabled = true;
+  else if (currentState == STATE_ELECTRICITY && pref_show_electricity) currentEnabled = true;
+  else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock) currentEnabled = true;
+  else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) currentEnabled = true;
   
   if (!currentEnabled) {
     int prev = (int)currentState - 1;

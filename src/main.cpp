@@ -55,12 +55,26 @@ void networkTask(void *pvParameters) {
       }
       lastSunFetch = millis();
     }
+    
+    if (now - lastElectricityFetch > 3600000 || lastElectricityFetch == 0) { // Every 1 hour
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchElectricityData();
+      }
+      lastElectricityFetch = millis();
+    }
 
     if (now - lastIssPassFetch > 1800000 || lastIssPassFetch == 0) { // Every 30 min
       if (WiFi.status() == WL_CONNECTED) {
         fetchISSPass();
       }
       lastIssPassFetch = millis();
+    }
+
+    if (now - lastAqiFetch > 1800000 || lastAqiFetch == 0) { // Every 30 min
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchAirQuality();
+      }
+      lastAqiFetch = millis();
     }
     
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield para el Watchdog y otras tareas RTOS
@@ -113,7 +127,6 @@ void setup() {
   pref_aemet_key = preferences.getString("aemet_key", "");
   pref_idema     = preferences.getString("aemet_idema", "");
   pref_n2yo_key  = preferences.getString("n2yo_key", "");
-
   pref_show_radar = preferences.getBool("sh_radar", true);
   pref_show_time = preferences.getBool("sh_time", true);
   pref_show_weather = preferences.getBool("sh_wea", true);
@@ -122,6 +135,9 @@ void setup() {
   pref_show_iss = preferences.getBool("sh_iss", true);
   pref_show_sun = preferences.getBool("sh_sun", true);
   pref_show_zodiac = preferences.getBool("sh_zodiac", true);
+  pref_show_electricity = preferences.getBool("sh_elec", true);
+  pref_show_elec_clock = preferences.getBool("sh_eclock", true);
+  pref_show_aqi = preferences.getBool("sh_aqi", true);
   
   pref_screen_time_s = preferences.getInt("screen_time", 30);
   pref_radar_time_s = preferences.getInt("radar_time", 30);
@@ -264,6 +280,9 @@ void nextState() {
     else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
     else if (currentState == STATE_SUN && pref_show_sun) enabled = true;
     else if (currentState == STATE_ZODIAC && pref_show_zodiac) enabled = true;
+    else if (currentState == STATE_ELECTRICITY && pref_show_electricity) enabled = true;
+    else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock) enabled = true;
+    else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) enabled = true;
     
     if (enabled) {
       if (currentState == STATE_TIME) {
@@ -277,6 +296,17 @@ void nextState() {
     }
   }
   currentState = STATE_RADAR; // Fallback
+}
+
+// Set LED color with cache and refresh
+void setLED(uint8_t r, uint8_t g, uint8_t b) {
+  static uint8_t last_r = 255, last_g = 255, last_b = 255;
+  static uint32_t last_update = 0;
+  if (r != last_r || g != last_g || b != last_b || millis() - last_update > 200) {
+    neopixelWrite(21, r, g, b);
+    last_r = r; last_g = g; last_b = b;
+    last_update = millis();
+  }
 }
 
 void loop() {
@@ -436,7 +466,29 @@ void loop() {
       lastDrawTime = now;
     }
     return;
+  } else if (currentState == STATE_ELECTRICITY) {
+    if (now - lastDrawTime > 1000) {
+      drawElectricityUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_ELEC_CLOCK) {
+    if (now - lastDrawTime > 1000) {
+      drawElecClockUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_AIR_QUALITY) {
+    if (now - lastDrawTime > 5000) {
+      drawAirQualityUI();
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
   }
+
 
   
   if (pref_airport_id != "" && !pref_geoip) {
@@ -545,18 +597,41 @@ void loop() {
   if (iss_visible) {
     // ISS Visible: Parpadeo amarillo
     if ((now / 500) % 2 == 0) {
-      neopixelWrite(21, 100, 100, 0); // Amarillo (brillo moderado)
+      setLED(100, 100, 0); // Amarillo (brillo moderado)
     } else {
-      neopixelWrite(21, 0, 0, 0);
+      setLED(0, 0, 0);
     }
   } else if (ledGreenUntil > now) {
     // Aterrizaje: Verde
-    neopixelWrite(21, 0, 255, 0); 
+    setLED(0, 255, 0); 
   } else if (ledRedUntil > now) {
     // Nuevo avión: Rojo
-    neopixelWrite(21, 255, 0, 0); 
+    setLED(255, 0, 0); 
+  } else if ((currentState == STATE_ELECTRICITY || currentState == STATE_ELEC_CLOCK) && timeValid && lastElectricityFetch > 0) {
+    int cur_h = timeinfo.tm_hour;
+    float p_min = 999.0;
+    float p_max = -999.0;
+    for (int i=0; i<24; i++) {
+      if (electricity_prices[i] < p_min) p_min = electricity_prices[i];
+      if (electricity_prices[i] > p_max) p_max = electricity_prices[i];
+    }
+    if (p_max == p_min) p_max = p_min + 0.01;
+    float norm = (electricity_prices[cur_h] - p_min) / (p_max - p_min);
+    
+    if (norm < 0) norm = 0;
+    if (norm > 1) norm = 1;
+    uint8_t r = 0, g = 0, b = 0;
+    if (norm < 0.5) {
+      r = norm * 2.0 * 255.0;
+      g = 255;
+    } else {
+      r = 255;
+      g = (1.0 - norm) * 2.0 * 255.0;
+    }
+    
+    setLED(r, g, b);
   } else {
     // Apagado
-    neopixelWrite(21, 0, 0, 0); 
+    setLED(0, 0, 0); 
   }
 }

@@ -10,3 +10,5 @@ void fetchISSLocation();
 void fetchISSPass();
 void fetchSunTimes();
 void fetchOpenMeteoWeather();
+void fetchElectricityData();
+void fetchAirQuality();

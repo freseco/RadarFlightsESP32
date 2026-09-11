@@ -57,7 +57,7 @@ void drawSplashScreen(String wifiStatus, uint16_t wifiColor) {
   tft.drawString("freseco@gmail.com", centerX, 100);
   
   tft.setTextColor(tft.color565(100, 150, 255), TFT_BLACK);
-  tft.drawString(tr("Datos: Airplanes.live", "Data: Airplanes.live"), centerX, 130);
+  tft.drawString(tr("Datos: OpenSky Network", "Data: OpenSky Network"), centerX, 130);
 
   tft.setTextColor(tft.color565(200, 200, 200), TFT_BLACK);
   tft.drawString("v" + FIRMWARE_VERSION, centerX, 160);
@@ -105,7 +105,7 @@ void drawRadarUI() {
     localPlanes = planes;
   }
 
-  // Contar cuántos vamos a dibujar para poner el texto exacto
+  //    <a href="https://opensky-network.org/aircraft-profile" target="_blank" style="color: #4CAF50; text-decoration: none; font-size: 16px;">🌍 Ver en OpenSky Network</a>
   int count = 0;
   for (int i = 0; i < localPlanes.size(); i++) {
     if (localPlanes[i].distanceKm <= pref_rad) count++;
@@ -354,30 +354,44 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
   spr.setTextSize(1);
   spr.setTextColor(spr.color565(200, 200, 200), faceColor);
   String ampm = (timeinfo->tm_hour < 12) ? "AM" : "PM";
-  spr.drawString(ampm, centerX, centerY - 35);
+  spr.drawString(ampm, centerX + 22, centerY - 96);
 
-  // Pequeña fase lunar
-  int phase = getMoonPhase(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
+  // Apertura clásica de fase lunar (estilo reloj mecánico)
+  float moon_fraction = getMoonPhaseFraction(timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday);
   int mX = centerX;
-  int mY = centerY - 60;
-  int mR = 12;
-  uint16_t moonColor = spr.color565(240, 240, 200); 
+  int mY = centerY - 50;
+  int R = 24; // Radio de la apertura principal
+
+  // 1. Fondo azul noche (bóveda celeste)
+  uint16_t skyColor = spr.color565(10, 20, 60);
+  spr.fillCircle(mX, mY, R, skyColor);
   
-  spr.fillCircle(mX, mY, mR, moonColor);
+  // 2. Estrellas estáticas en el fondo
+  spr.drawPixel(mX - 10, mY - 15, TFT_WHITE);
+  spr.drawPixel(mX + 12, mY - 10, TFT_WHITE);
+  spr.drawPixel(mX + 5,  mY - 20, TFT_WHITE);
+  spr.drawPixel(mX - 18, mY - 5,  TFT_WHITE);
+
+  // 3. Dibujar la luna (se mueve en arco según la fracción)
+  // moon_fraction va de 0.0 (nueva) a 0.5 (llena) a 1.0 (nueva)
+  float moonAngle = (-180.0 + moon_fraction * 180.0) * M_PI / 180.0;
+  int mR = 8; // Radio de la luna
+  int orbitR = R - mR - 2; 
+  int moonX = mX + orbitR * cos(moonAngle);
+  int moonY = mY + orbitR * sin(moonAngle);
+  uint16_t moonColor = spr.color565(255, 240, 150);
+  spr.fillCircle(moonX, moonY, mR, moonColor);
+
+  // 4. Máscara inferior para crear la apertura con forma de "pecho"
+  spr.fillRect(mX - R, mY, R * 2 + 1, R + 1, faceColor);
   
-  switch(phase) {
-    case 0: spr.fillCircle(mX, mY, mR, faceColor); break;
-    case 1: spr.fillCircle(mX - 5, mY, mR, faceColor); break;
-    case 2: spr.fillRect(mX - mR, mY - mR, mR, mR * 2, faceColor); break;
-    case 3: spr.fillCircle(mX - 10, mY, mR, faceColor); break;
-    case 4: break; // Llena
-    case 5: spr.fillCircle(mX + 10, mY, mR, faceColor); break;
-    case 6: spr.fillRect(mX, mY - mR, mR, mR * 2, faceColor); break;
-    case 7: spr.fillCircle(mX + 5, mY, mR, faceColor); break;
-  }
+  // Dos círculos que suben para hacer la forma característica
+  int humpR = 14; 
+  spr.fillCircle(mX - 12, mY, humpR, faceColor);
+  spr.fillCircle(mX + 12, mY, humpR, faceColor);
   
-  // Dibujar el contorno sutil de la lunita para que destaque sobre el fondo
-  spr.drawCircle(mX, mY, mR, spr.color565(100, 100, 100));
+  // Contorno sutil del arco superior
+  spr.drawCircle(mX, mY, R, spr.color565(80, 80, 80));
   
   // Calcular ángulos de las agujas
   float secAngle = timeinfo->tm_sec * 6.0 * M_PI / 180.0;
@@ -1166,11 +1180,35 @@ void drawWeatherIcon(int x, int y, int type) {
       spr.fillCircle(cx + 16, y - 12 + yOffset, 6, TFT_BLACK);
     }
 
-    // Draw cloud
-    spr.fillCircle(cx, y - 5 + yOffset, 12, cColor);
-    spr.fillCircle(cx - 12, y + yOffset, 10, cColor);
-    spr.fillCircle(cx + 12, y + yOffset, 10, cColor);
-    spr.fillRect(cx - 12, y + yOffset, 24, 10, cColor);
+    auto drawSingleCloud = [&](float cloudX, float cloudY, uint16_t color, float scale) {
+      if (scale <= 0.05f) return;
+      int r1 = (int)(12.0f * scale);
+      int r2 = (int)(10.0f * scale);
+      int w = (int)(24.0f * scale);
+      int h = (int)(10.0f * scale);
+      int xOff = (int)(12.0f * scale);
+      int yOff = (int)(5.0f * scale);
+      spr.fillCircle((int)cloudX, (int)cloudY - yOff, r1, color);
+      spr.fillCircle((int)cloudX - xOff, (int)cloudY, r2, color);
+      spr.fillCircle((int)cloudX + xOff, (int)cloudY, r2, color);
+      spr.fillRect((int)cloudX - xOff, (int)cloudY, w + 1, h + 1, color);
+    };
+
+    uint16_t extraCol1 = (type == 2) ? spr.color565(140, 140, 140) : spr.color565(70, 70, 70);
+    uint16_t extraCol2 = (type == 2) ? spr.color565(200, 200, 200) : spr.color565(130, 130, 130);
+
+    // Nube extra trasera (aparece y desaparece)
+    float phase1 = (millis() % 3500) / 3500.0f;
+    float scale1 = sin(phase1 * M_PI) * 0.6f;
+    drawSingleCloud(x - 20 + (phase1 * 40.0f), y + yOffset - 6, extraCol1, scale1);
+
+    // Nube principal
+    drawSingleCloud(cx, y + yOffset, cColor, 1.0f);
+
+    // Nube extra delantera (aparece y desaparece)
+    float phase2 = (millis() % 4500) / 4500.0f;
+    float scale2 = sin(phase2 * M_PI) * 0.5f;
+    drawSingleCloud(x + 20 - (phase2 * 40.0f), y + yOffset + 4, extraCol2, scale2);
 
     // Draw rain
     if (type == 3 || type == 6 || type == 7) {
@@ -1680,6 +1718,7 @@ void drawISS() {
 void drawSunArc(struct tm* timeinfo) {
   spr.fillSprite(TFT_BLACK);
   
+  spr.setTextFont(1);
   spr.setTextDatum(MC_DATUM);
   spr.setTextColor(TFT_ORANGE);
   spr.setTextSize(2);
@@ -1699,9 +1738,38 @@ void drawSunArc(struct tm* timeinfo) {
   spr.drawLine(centerX - 90, centerY + 15, centerX + 90, centerY + 15, spr.color565(100,50,0));
   
   
+  if (sunriseTimeStr != "--:--" && sunsetTimeStr != "--:--") {
+    int sr_h = sunriseTimeStr.substring(0, 2).toInt();
+    int sr_m = sunriseTimeStr.substring(3, 5).toInt();
+    int ss_h = sunsetTimeStr.substring(0, 2).toInt();
+    int ss_m = sunsetTimeStr.substring(3, 5).toInt();
+    int sr_mins = sr_h * 60 + sr_m;
+    int ss_mins = ss_h * 60 + ss_m;
+    int now_mins = timeinfo->tm_hour * 60 + timeinfo->tm_min;
+    
+    if (now_mins >= sr_mins && now_mins <= ss_mins) {
+      sun_progress = ((float)(now_mins - sr_mins) / (float)(ss_mins - sr_mins)) * 0.5;
+    } else {
+      int night_elapsed = (now_mins > ss_mins) ? (now_mins - ss_mins) : ((1440 - ss_mins) + now_mins);
+      int night_total = (1440 - ss_mins) + sr_mins;
+      sun_progress = 0.5 + ((float)night_elapsed / (float)night_total) * 0.5;
+    }
+  }
+
   spr.setTextColor(TFT_YELLOW);
   spr.setTextSize(1);
-  spr.drawString("Zenit: " + solarNoonTimeStr, centerX, centerY - 15);
+  if (sun_progress >= 0.5 && sunriseTimeStr != "--:--") {
+    int sr_h = sunriseTimeStr.substring(0, 2).toInt();
+    int sr_m = sunriseTimeStr.substring(3, 5).toInt();
+    int sr_mins = sr_h * 60 + sr_m;
+    int now_mins = timeinfo->tm_hour * 60 + timeinfo->tm_min;
+    int remaining_mins = (sr_mins >= now_mins) ? (sr_mins - now_mins) : (1440 - now_mins + sr_mins);
+    char buf[30];
+    sprintf(buf, "Faltan: %dh %dm", remaining_mins / 60, remaining_mins % 60);
+    spr.drawString(String(buf), centerX, centerY - 15);
+  } else {
+    spr.drawString("Zenit: " + solarNoonTimeStr, centerX, centerY - 15);
+  }
   
   // Calculate Sun position (sun_progress goes from 0.0 to 1.0)
   float sun_angle = 180.0 + (sun_progress * 360.0);
@@ -1787,10 +1855,17 @@ void drawSunArc(struct tm* timeinfo) {
     
     int total_sr = sr_h * 60 + sr_m;
     int total_ss = ss_h * 60 + ss_m;
-    int diff = total_ss - total_sr;
-    if (diff < 0) diff += 24 * 60;
+    String luzStr = "";
     
-    String luzStr = tr("Luz solar: ", "Daylight: ") + String(diff / 60) + "h " + String(diff % 60) + "m";
+    if (sun_progress >= 0.5) {
+      int night_mins = (1440 - total_ss) + total_sr;
+      luzStr = tr("Noche: ", "Night: ") + String(night_mins / 60) + "h " + String(night_mins % 60) + "m";
+    } else {
+      int diff = total_ss - total_sr;
+      if (diff < 0) diff += 24 * 60;
+      luzStr = tr("Luz solar: ", "Daylight: ") + String(diff / 60) + "h " + String(diff % 60) + "m";
+    }
+    
     spr.setTextColor(spr.color565(150, 200, 255));
     spr.drawString(luzStr, centerX, centerY + 65);
   }
@@ -1970,5 +2045,348 @@ void drawZodiacUI(struct tm* timeinfo) {
   spr.setTextColor(spr.color565(255, 200, 100), TFT_BLACK);
   spr.drawString(String(z.symbol), centerX, 240 - 20);
 }
+
+// ─── ELECTRICITY SCREEN ───────────────────────────────────────────────────
+void drawElectricityUI(struct tm* timeinfo) {
+  spr.fillSprite(TFT_BLACK);
+  
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextColor(TFT_WHITE);
+  spr.setTextFont(1);
+  spr.setTextSize(2);
+  spr.drawString(tr("PRECIO LUZ", "ELEC PRICE"), centerX, 25);
+  
+  if (lastElectricityFetch == 0) {
+    spr.setTextSize(1);
+    spr.drawString(tr("Cargando...", "Loading..."), centerX, centerY);
+    return;
+  }
+  
+  int cur_h = timeinfo->tm_hour;
+  float p_cur = electricity_prices[cur_h];
+  float p_prev = (cur_h > 0) ? electricity_prices[cur_h - 1] : electricity_prices[0];
+  float p_next = (cur_h < 23) ? electricity_prices[cur_h + 1] : electricity_prices[23];
+  
+  // Find min/max for scaling and coloring
+  float p_min = 999.0;
+  float p_max = -999.0;
+  for (int i=0; i<24; i++) {
+    if (electricity_prices[i] < p_min) p_min = electricity_prices[i];
+    if (electricity_prices[i] > p_max) p_max = electricity_prices[i];
+  }
+  if (p_max == p_min) p_max = p_min + 0.01; // Avoid div by zero
+  
+  // Function to get color based on price
+  auto getPriceColor = [&](float p) -> uint16_t {
+    float norm = (p - p_min) / (p_max - p_min);
+    if (norm < 0) norm = 0;
+    if (norm > 1) norm = 1;
+    uint8_t r, g, b = 0;
+    if (norm < 0.5) {
+      r = norm * 2.0 * 255.0;
+      g = 255;
+    } else {
+      r = 255;
+      g = (1.0 - norm) * 2.0 * 255.0;
+    }
+    return spr.color565(r, g, b);
+  };
+  
+  // Draw current price
+  spr.setTextColor(getPriceColor(p_cur));
+  spr.setTextFont(4); // large font
+  spr.setTextSize(1);
+  char buf[30];
+  sprintf(buf, "%.3f", p_cur);
+  spr.drawString(String(buf), centerX, 70);
+  
+  spr.setTextFont(1);
+  spr.setTextSize(1);
+  spr.drawString("Euros/kWh", centerX, 95);
+  
+  // Draw previous/next
+  spr.setTextFont(1);
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_LIGHTGREY);
+  sprintf(buf, "%02d:00 -> %.3f", (cur_h > 0 ? cur_h-1 : 0), p_prev);
+  spr.drawString(String(buf), centerX - 60, 120);
+  sprintf(buf, "%02d:00 -> %.3f", (cur_h < 23 ? cur_h+1 : 23), p_next);
+  spr.drawString(String(buf), centerX + 60, 120);
+  
+  // Draw Graph
+  int g_x = 10;
+  int g_w = 220;
+  int g_y = 225;
+  int g_h = 75;
+  
+  float bar_w = (float)g_w / 24.0;
+  for (int i=0; i<24; i++) {
+    int display_h = (cur_h - 11 + i + 24) % 24;
+    float norm = (electricity_prices[display_h] - p_min) / (p_max - p_min);
+    int bh = max(2.0f, norm * g_h);
+    int bx = g_x + i * bar_w;
+    int by = g_y - bh;
+    
+    uint16_t b_color = getPriceColor(electricity_prices[display_h]);
+    if (display_h == cur_h) {
+      spr.fillRect(bx, by, bar_w - 1, bh, TFT_WHITE);
+      spr.fillRect(bx + 1, by + 1, bar_w - 3, bh - 2, b_color);
+      // Indicator line above
+      spr.drawLine(bx + (bar_w/2), by - 2, bx + (bar_w/2), by - 6, TFT_WHITE);
+      // Label current hour
+      spr.setTextColor(TFT_WHITE);
+      spr.setTextDatum(TC_DATUM);
+      spr.drawString(String(display_h), bx + bar_w/2, g_y + 2);
+    } else {
+      spr.fillRect(bx, by, bar_w - 1, bh, b_color);
+      // Draw sparse hours (e.g. every 6 hours) but don't overlap center
+      if (display_h % 6 == 0 && abs(i - 11) > 2) { 
+        spr.setTextColor(TFT_DARKGREY);
+        spr.setTextDatum(TC_DATUM);
+        spr.drawString(String(display_h), bx + bar_w/2, g_y + 2);
+      }
+    }
+  }
+}
+
+// ─── ELECTRICITY CLOCK SCREEN ──────────────────────────────────────────────
+void drawElecClockUI(struct tm* timeinfo) {
+  spr.fillSprite(TFT_BLACK);
+
+  if (lastElectricityFetch == 0) {
+    spr.setTextDatum(MC_DATUM);
+    spr.setTextColor(TFT_WHITE);
+    spr.setTextFont(1);
+    spr.setTextSize(1);
+    spr.drawString(tr("Cargando reloj...", "Loading clock..."), centerX, centerY);
+    return;
+  }
+
+  // Find min/max for scaling and coloring
+  float p_min = 999.0;
+  float p_max = -999.0;
+  for (int i=0; i<24; i++) {
+    if (electricity_prices[i] < p_min) p_min = electricity_prices[i];
+    if (electricity_prices[i] > p_max) p_max = electricity_prices[i];
+  }
+  if (p_max == p_min) p_max = p_min + 0.01;
+
+  auto getPriceColor = [&](float p) -> uint16_t {
+    float norm = (p - p_min) / (p_max - p_min);
+    if (norm < 0) norm = 0;
+    if (norm > 1) norm = 1;
+    uint8_t r, g, b = 0;
+    if (norm < 0.5) {
+      r = norm * 2.0 * 255.0;
+      g = 255;
+    } else {
+      r = 255;
+      g = (1.0 - norm) * 2.0 * 255.0;
+    }
+    return spr.color565(r, g, b);
+  };
+
+  // Draw 24h Ring
+  for (int h=0; h<24; h++) {
+    int start_a = (h * 15 + 180) % 360;
+    int end_a = start_a + 15;
+    spr.drawArc(centerX, centerY, 115, 95, start_a, end_a, getPriceColor(electricity_prices[h]), TFT_BLACK, false);
+  }
+  
+  // Highlight current hour ring segment
+  int cur_h = timeinfo->tm_hour;
+  int cur_start_a = (cur_h * 15 + 180) % 360;
+  int cur_end_a = cur_start_a + 15;
+  uint16_t cur_color = getPriceColor(electricity_prices[cur_h]);
+  spr.drawArc(centerX, centerY, 118, 92, cur_start_a, cur_end_a, cur_color, TFT_BLACK, false);
+
+  // Draw ticks to separate hours
+  for (int i=0; i<24; i++) {
+    float a = i * 15 * DEG_TO_RAD - PI/2.0;
+    int x1 = centerX + cos(a) * 95;
+    int y1 = centerY + sin(a) * 95;
+    int x2 = centerX + cos(a) * 115;
+    int y2 = centerY + sin(a) * 115;
+    spr.drawLine(x1, y1, x2, y2, TFT_BLACK);
+  }
+
+  // Draw hour labels
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextColor(TFT_LIGHTGREY);
+  spr.setTextFont(1);
+  spr.setTextSize(1);
+  for (int i=0; i<24; i+=6) {
+    float a = i * 15 * DEG_TO_RAD - PI/2.0;
+    int lx = centerX + cos(a) * 82;
+    int ly = centerY + sin(a) * 82;
+    spr.drawString(String(i), lx, ly);
+  }
+
+  // Draw Sunlight Inner Arc
+  if (sunriseTimeStr != "--:--" && sunsetTimeStr != "--:--") {
+    float sunriseHour = sunriseTimeStr.substring(0, 2).toFloat() + sunriseTimeStr.substring(3, 5).toFloat() / 60.0;
+    float sunsetHour = sunsetTimeStr.substring(0, 2).toFloat() + sunsetTimeStr.substring(3, 5).toFloat() / 60.0;
+    int sun_start = ((int)(sunriseHour * 15) + 180) % 360;
+    int sun_end = ((int)(sunsetHour * 15) + 180) % 360;
+    
+    if (sun_start > sun_end) {
+      spr.drawArc(centerX, centerY, 94, 88, sun_start, 360, TFT_YELLOW, TFT_BLACK, false);
+      spr.drawArc(centerX, centerY, 94, 88, 0, sun_end, TFT_YELLOW, TFT_BLACK, false);
+    } else {
+      spr.drawArc(centerX, centerY, 94, 88, sun_start, sun_end, TFT_YELLOW, TFT_BLACK, false);
+    }
+  }
+
+  // (Pizza slice highlight has been removed as requested)
+  // Info in center
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(1);
+  spr.setTextSize(1);
+  
+  // Date
+  char dbuf[20];
+  strftime(dbuf, sizeof(dbuf), "%d/%m/%Y", timeinfo);
+  spr.setTextColor(TFT_LIGHTGREY);
+  spr.drawString(String(dbuf), centerX, centerY - 25);
+  
+  // Max/Min
+  char buf[20];
+  spr.setTextColor(TFT_RED);
+  sprintf(buf, "Max: %.3f", p_max);
+  spr.drawString(String(buf), centerX, centerY - 10);
+  
+  spr.setTextColor(TFT_GREEN);
+  sprintf(buf, "Min: %.3f", p_min);
+  spr.drawString(String(buf), centerX, centerY + 10);
+  
+  // Current Price
+  spr.setTextColor(getPriceColor(electricity_prices[cur_h]));
+  spr.setTextSize(2);
+  sprintf(buf, "%.3f", electricity_prices[cur_h]);
+  spr.drawString(String(buf), centerX, centerY + 30);
+  
+  // Small center dot
+  spr.fillCircle(centerX, centerY, 3, getPriceColor(electricity_prices[cur_h]));
+}
+
+// Returns AQI color matching AQICN standard palette
+static uint16_t getAqiColor(int aqi) {
+  if (aqi <= 50)  return spr.color565(0,   153,  102);
+  if (aqi <= 100) return spr.color565(255, 220,  50);
+  if (aqi <= 150) return spr.color565(255, 153,  50);
+  if (aqi <= 200) return spr.color565(200,  0,   50);
+  if (aqi <= 300) return spr.color565(100,  0,  153);
+  return spr.color565(126,  0,   35);
+}
+
+static const char* getAqiLabel(int aqi) {
+  if (aqi <= 50)  return "BUENO";
+  if (aqi <= 100) return "MODERADO";
+  if (aqi <= 150) return "SENSIBLES";
+  if (aqi <= 200) return "MALO";
+  if (aqi <= 300) return "MUY MALO";
+  return "PELIGROSO";
+}
+
+void drawAirQualityUI() {
+  spr.fillSprite(TFT_BLACK);
+  spr.setTextDatum(MC_DATUM);
+
+  if (!currentAQI.valid) {
+    spr.fillCircle(centerX, centerY, radarRadius, spr.color565(20, 20, 30));
+    spr.drawCircle(centerX, centerY, radarRadius, spr.color565(60, 60, 80));
+    spr.setTextColor(spr.color565(180, 180, 180));
+    spr.setTextFont(2);
+    spr.setTextSize(1);
+    spr.drawString(tr("Calidad del Aire", "Air Quality"), centerX, centerY - 20);
+    spr.setTextColor(spr.color565(120, 120, 120));
+    spr.setTextFont(1);
+    spr.drawString(tr("Obteniendo datos...", "Fetching data..."), centerX, centerY + 10);
+    return;
+  }
+
+  int aqi = currentAQI.aqi;
+  uint16_t aqiColor = getAqiColor(aqi);
+  uint16_t bgColor  = spr.color565(10, 10, 15);
+
+  spr.fillCircle(centerX, centerY, radarRadius, bgColor);
+
+  // Arco de progreso (0-300 AQI → 0-270°)
+  int arcAqi   = aqi > 300 ? 300 : aqi;
+  int arcDeg   = (int)((arcAqi / 300.0f) * 270);
+  int arcStart = 135;
+  // Background arc track
+  spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
+              arcStart, arcStart + 270, spr.color565(40, 40, 50), bgColor, false);
+  // Colored progress
+  if (arcDeg > 0) {
+    spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
+                arcStart, arcStart + arcDeg, aqiColor, bgColor, false);
+  }
+
+  // Border
+  spr.drawCircle(centerX, centerY, radarRadius,     aqiColor);
+  spr.drawCircle(centerX, centerY, radarRadius - 1, aqiColor);
+
+  // AQI number
+  spr.setTextColor(aqiColor);
+  spr.setTextFont(4);
+  spr.setTextSize(aqi >= 100 ? 2 : 3);
+  spr.drawString(String(aqi), centerX, centerY - 18);
+
+  // Level label
+  spr.setTextFont(2);
+  spr.setTextSize(1);
+  spr.setTextColor(aqiColor);
+  spr.drawString(getAqiLabel(aqi), centerX, centerY + 18);
+
+  spr.setTextColor(spr.color565(160, 160, 160));
+  spr.drawString(tr("CALIDAD AIRE", "AIR QUALITY"), centerX, 24);
+  spr.drawString(tr("(AQI)", "(AQI)"), centerX, 36);
+
+  // Station name
+  spr.setTextColor(spr.color565(130, 180, 255));
+  int spaceIdx = currentAQI.stationName.indexOf(' ', currentAQI.stationName.length() / 2 - 2);
+  if (currentAQI.stationName.length() > 18 && spaceIdx > 0) {
+    spr.drawString(currentAQI.stationName.substring(0, spaceIdx), centerX, 204);
+    spr.drawString(currentAQI.stationName.substring(spaceIdx + 1), centerX, 216);
+  } else {
+    spr.drawString(currentAQI.stationName, centerX, 210);
+  }
+
+  // Sub-pollutants in quadrants
+  const int sx = 55;
+  spr.setTextFont(1);
+  spr.setTextSize(1);
+
+  // PM2.5 top-left
+  spr.setTextColor(spr.color565(180, 180, 255));
+  spr.drawString("PM2.5", centerX - sx, centerY - 42);
+  spr.setTextColor(currentAQI.pm25 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
+  spr.drawString(currentAQI.pm25 >= 0 ? String(currentAQI.pm25, 0) : "N/A", centerX - sx, centerY - 30);
+
+  // PM10 top-right
+  spr.setTextColor(spr.color565(180, 180, 255));
+  spr.drawString("PM10",  centerX + sx, centerY - 42);
+  spr.setTextColor(currentAQI.pm10 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
+  spr.drawString(currentAQI.pm10 >= 0 ? String(currentAQI.pm10, 0) : "N/A", centerX + sx, centerY - 30);
+
+  // O3 bottom-left
+  spr.setTextColor(spr.color565(180, 255, 180));
+  spr.drawString("O3",    centerX - sx, centerY + 30);
+  spr.setTextColor(currentAQI.o3 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
+  spr.drawString(currentAQI.o3 >= 0   ? String(currentAQI.o3, 0)   : "N/A", centerX - sx, centerY + 42);
+
+  // NO2 bottom-right
+  spr.setTextColor(spr.color565(255, 210, 160));
+  spr.drawString("NO2",   centerX + sx, centerY + 30);
+  spr.setTextColor(currentAQI.no2 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
+  spr.drawString(currentAQI.no2 >= 0  ? String(currentAQI.no2, 0)  : "N/A", centerX + sx, centerY + 42);
+
+  // Center dot
+  spr.fillCircle(centerX, centerY - 3, 2, aqiColor);
+}
+
+
  
  

@@ -67,6 +67,9 @@ enum DisplayState {
   STATE_ISS,
   STATE_SUN,
   STATE_ZODIAC,
+  STATE_ELECTRICITY,
+  STATE_ELEC_CLOCK,
+  STATE_AIR_QUALITY,
   STATE_MAX
 };
 extern DisplayState currentState;
@@ -95,8 +98,29 @@ extern bool pref_show_horizon;
 extern bool pref_show_iss;
 extern bool pref_show_sun;
 extern bool pref_show_zodiac;
+extern bool pref_show_electricity;
+extern bool pref_show_elec_clock;
+extern bool pref_show_aqi;
 extern int pref_screen_time_s;
 extern int pref_radar_time_s;
+
+// Electricity Prices
+extern float electricity_prices[24];
+extern unsigned long lastElectricityFetch;
+
+// Air Quality (AQICN / waqi.info)
+struct AirQualityData {
+  int aqi;
+  float pm25;
+  float pm10;
+  float o3;
+  float no2;
+  String stationName;
+  bool valid;
+};
+extern AirQualityData currentAQI;
+extern unsigned long lastAqiFetch;
+extern String pref_aqicn_token;
 
 // ISS Data
 extern float iss_lat;

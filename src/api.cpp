@@ -1,114 +1,101 @@
 #include "api.h"
 
 void fetchAirplanes() {
-  Serial.println("Buscando aviones...");
-  float distNM = (pref_rad + 5.0) * 0.539957; 
-  String url = "https://api.airplanes.live/v2/point/" + String(pref_lat, 4) + "/" + String(pref_lon, 4) + "/" + String(distNM, 1);
+  Serial.println("Buscando aviones (OpenSky)...");
+
+  // Bounding box from center + radius
+  float deg = pref_rad / 111.32f;  // km → degrees
+  float latMin = pref_lat - deg;
+  float latMax = pref_lat + deg;
+  float lonDeg = pref_rad / (111.32f * cos(pref_lat * M_PI / 180.0f));
+  float lonMin = pref_lon - lonDeg;
+  float lonMax = pref_lon + lonDeg;
+
+  String url = "https://opensky-network.org/api/states/all"
+               "?lamin=" + String(latMin, 4) +
+               "&lomin=" + String(lonMin, 4) +
+               "&lamax=" + String(latMax, 4) +
+               "&lomax=" + String(lonMax, 4);
   Serial.print("URL: "); Serial.println(url);
 
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
   http.begin(client, url);
-  http.setTimeout(10000); 
+  http.setTimeout(10000);
+  http.setUserAgent("RadarFlightsESP32/1.0");
   int httpCode = http.GET();
-  
+
   Serial.printf("HTTP Code: %d\n", httpCode);
-  
+
   if (httpCode > 0) {
     if (httpCode == HTTP_CODE_OK) {
       apiErrorMsg = "";
       String payload = http.getString();
       Serial.printf("Payload size: %d bytes\n", payload.length());
-      
-      JsonDocument doc; 
+
+      JsonDocument doc;
       DeserializationError error = deserializeJson(doc, payload);
-      
+
       if (!error) {
         std::vector<Airplane> newPlanes;
-        JsonArray ac = doc["ac"];
-        
-        if (ac.isNull()) {
-          Serial.println("El array 'ac' es null (no hay aviones en esta zona).");
+        JsonArray states = doc["states"];
+
+        if (states.isNull()) {
+          Serial.println("No hay aviones en esta zona.");
         } else {
           int count = 0;
-          for (JsonVariant v : ac) {
-            JsonObject planeData = v.as<JsonObject>();
+          for (JsonArray state : states) {
+            // OpenSky state vector indices:
+            // 0=icao24, 1=callsign, 5=lon, 6=lat, 7=baro_alt(m),
+            // 8=on_ground, 9=velocity(m/s), 10=true_track(deg)
+            if (state.size() < 11) continue;
+
+            bool on_ground = state[8].as<bool>();
+            if (on_ground) continue;
+
+            float lat = state[6].isNull() ? 0 : state[6].as<float>();
+            float lon = state[5].isNull() ? 0 : state[5].as<float>();
+            if (lat == 0 && lon == 0) continue;
+
             Airplane p;
-            p.altitude = 0; p.velocity = 0; p.callsign = ""; p.category = 0;
-            bool on_ground = false;
-            
-            if (planeData["flight"]) {
-              p.callsign = planeData["flight"].as<String>();
-              p.callsign.trim();
-            }
-            if (planeData["lon"]) p.lon = planeData["lon"].as<float>();
-            if (planeData["lat"]) p.lat = planeData["lat"].as<float>();
-            if (planeData["track"]) p.heading = planeData["track"].as<float>();
-            
-            if (planeData["alt_baro"]) {
-              if (planeData["alt_baro"].is<String>() && planeData["alt_baro"] == "ground") {
-                 on_ground = true;
-              } else {
-                 p.altitude = planeData["alt_baro"].as<float>() * 0.3048; // Convertir de pies a metros
-              }
-            } else if (planeData["alt_geom"]) {
-              p.altitude = planeData["alt_geom"].as<float>() * 0.3048; // Convertir de pies a metros (respaldo)
-            }
+            p.callsign = state[1].isNull() ? "" : state[1].as<String>();
+            p.callsign.trim();
+            p.lat      = lat;
+            p.lon      = lon;
+            p.altitude = state[7].isNull() ? 0 : state[7].as<float>(); // already in metres
+            p.velocity = state[9].isNull() ? 0 : state[9].as<float>() * 3.6f; // m/s → km/h
+            p.heading  = state[10].isNull() ? 0 : state[10].as<float>();
+            p.category = 0;
 
-            if (planeData["gs"]) p.velocity = planeData["gs"].as<float>() * 1.852; // Nudos a km/h
-            
-            if (planeData["category"]) {
-               String cat = planeData["category"].as<String>();
-               if (cat == "A1" || cat == "A2") p.category = 1; // Avioneta
-               else if (cat == "A5") p.category = 5; // Heavy
-               else if (cat == "A7") p.category = 8;
-               else if (cat == "B1" || cat == "B4") p.category = 9;
-               else if (cat == "B2") p.category = 10;
-               else if (cat == "B5") p.category = 11;
-               else if (cat.startsWith("C")) on_ground = true;
-            }
-
-            if (p.lat != 0 && p.lon != 0 && !on_ground) {
-              calculatePolar(p);
-              newPlanes.push_back(p);
-              count++;
-            }
+            calculatePolar(p);
+            newPlanes.push_back(p);
+            count++;
+            if (count >= pref_max_planes) break;
           }
-          Serial.printf("Se encontraron %d aviones válidos en vuelo.\n", count);
-          
+          Serial.printf("Aviones válidos: %d\n", count);
+
           if (dataMutex != NULL) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
-            
-            // Check for planes that landed or left (in planes but not in newPlanes)
-            if (planes.size() > 0) { // Don't trigger on first boot or when empty
+
+            // Landed / left
+            if (planes.size() > 0) {
               for (auto& oldPlane : planes) {
                 bool found = false;
                 for (auto& newPlane : newPlanes) {
-                  if (oldPlane.callsign == newPlane.callsign && oldPlane.callsign != "") {
-                    found = true;
-                    break;
-                  }
+                  if (oldPlane.callsign == newPlane.callsign && oldPlane.callsign != "") { found = true; break; }
                 }
-                if (!found) {
-                  ledGreenUntil = millis() + 2000;
-                }
+                if (!found) ledGreenUntil = millis() + 2000;
               }
             }
-
-            // Check for new planes (in newPlanes but not in planes)
-            if (planes.size() > 0) { // Don't trigger on first boot
+            // New arrivals
+            if (planes.size() > 0) {
               for (auto& newPlane : newPlanes) {
                 bool found = false;
                 for (auto& oldPlane : planes) {
-                  if (oldPlane.callsign == newPlane.callsign && newPlane.callsign != "") {
-                    found = true;
-                    break;
-                  }
+                  if (oldPlane.callsign == newPlane.callsign && newPlane.callsign != "") { found = true; break; }
                 }
-                if (!found) {
-                  ledRedUntil = millis() + 2000;
-                }
+                if (!found) ledRedUntil = millis() + 2000;
               }
             }
 
@@ -117,31 +104,28 @@ void fetchAirplanes() {
           }
         }
       } else {
-        Serial.print("Error al parsear JSON: ");
-        Serial.println(error.c_str());
+        Serial.print("Error JSON: "); Serial.println(error.c_str());
         apiErrorMsg = "ERROR AL LEER JSON";
         addErrorLog("JSON Error: " + String(error.c_str()));
       }
     } else if (httpCode == 429) {
       apiErrorMsg = "LIMITE DIARIO EXCEDIDO (429)";
-      addErrorLog("HTTP 429: Rate Limit Exceeded");
-      Serial.println("Error 429: Rate Limit Exceeded");
+      addErrorLog("HTTP 429: Rate Limit");
     } else if (httpCode == 401 || httpCode == 403) {
       apiErrorMsg = "ACCESO DENEGADO API (" + String(httpCode) + ")";
       addErrorLog("HTTP " + String(httpCode) + ": Auth Error");
-      Serial.println("Error Auth");
     } else {
       apiErrorMsg = "ERROR API: " + String(httpCode);
       addErrorLog("API Error HTTP: " + String(httpCode));
-      Serial.println("Error de la API: " + String(httpCode));
     }
   } else {
     apiErrorMsg = "ERROR CONEXION API";
     addErrorLog("Conn Error: " + http.errorToString(httpCode));
-    Serial.printf("Fallo de conexion: %s\n", http.errorToString(httpCode).c_str());
   }
   http.end();
 }
+
+
 
 
 void fetchOpenMeteoWeather() {
@@ -347,6 +331,106 @@ void fetchSunTimes() {
         }
       }
     }
+  }
+  http.end();
+}
+void fetchElectricityData() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo, 10)) return;
+
+  char url[150];
+  sprintf(url, "https://api.esios.ree.es/archives/70/download?date=%04d-%02d-%02d&format=json", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
+  
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(8000);
+  http.addHeader("User-Agent", "Mozilla/5.0");
+  http.addHeader("Accept", "application/json");
+  
+  int httpCode = http.GET();
+  if (httpCode > 0) {
+    if (httpCode == HTTP_CODE_OK) {
+      String payload = http.getString();
+      
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, payload);
+      
+      if (!error) {
+        JsonArray pvpc = doc["PVPC"];
+        if (!pvpc.isNull() && pvpc.size() >= 24) {
+          for (int h = 0; h < 24; h++) {
+            String pcb_str = pvpc[h]["PCB"].as<String>();
+            pcb_str.replace(",", "."); // Convert 123,45 to 123.45
+            electricity_prices[h] = pcb_str.toFloat() / 1000.0f;
+          }
+          lastElectricityFetch = millis();
+        } else {
+          addErrorLog("Electricity JSON array missing");
+        }
+      } else {
+        addErrorLog("Electricity JSON err");
+      }
+    } else {
+      addErrorLog("Electricity HTTP " + String(httpCode));
+    }
+  } else {
+    addErrorLog("Electricity API failed");
+  }
+  http.end();
+}
+void fetchAirQuality() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  // Nearest station by geo coordinates
+  String url = "https://api.waqi.info/feed/geo:" + String(pref_lat, 4) + ";" + String(pref_lon, 4) + "/?token=" + pref_aqicn_token;
+  Serial.println("Consultando calidad del aire: " + url);
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  http.begin(client, url);
+  http.setTimeout(8000);
+  int code = http.GET();
+
+  if (code == HTTP_CODE_OK) {
+    String payload = http.getString();
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (!err && doc["status"] == "ok") {
+      AirQualityData newAQI;
+      newAQI.aqi = doc["data"]["aqi"].as<int>();
+
+      // Sub-pollutants (may not always be present)
+      JsonObject iaqi = doc["data"]["iaqi"];
+      newAQI.pm25 = iaqi["pm25"]["v"] | -1.0f;
+      newAQI.pm10 = iaqi["pm10"]["v"] | -1.0f;
+      newAQI.o3   = iaqi["o3"]["v"]   | -1.0f;
+      newAQI.no2  = iaqi["no2"]["v"]  | -1.0f;
+
+      // Station name
+      newAQI.stationName = doc["data"]["city"]["name"].as<String>();
+      // Keep only last part after last comma for brevity
+      int commaIdx = newAQI.stationName.lastIndexOf(',');
+      if (commaIdx > 0) newAQI.stationName = newAQI.stationName.substring(0, commaIdx);
+      if (newAQI.stationName.length() > 22) newAQI.stationName = newAQI.stationName.substring(0, 22);
+
+      newAQI.valid = true;
+
+      if (dataMutex != NULL) {
+        xSemaphoreTake(dataMutex, portMAX_DELAY);
+        currentAQI = newAQI;
+        xSemaphoreGive(dataMutex);
+      }
+      Serial.printf("AQI: %d, PM2.5: %.1f, Estacion: %s\n", newAQI.aqi, newAQI.pm25, newAQI.stationName.c_str());
+    } else {
+      addErrorLog("AQI JSON err: " + String(doc["status"].as<String>()));
+      Serial.println("AQI error: " + String(doc["status"].as<String>()));
+    }
+  } else {
+    addErrorLog("AQI HTTP: " + String(code));
+    Serial.println("AQI HTTP error: " + String(code));
   }
   http.end();
 }

@@ -73,7 +73,7 @@ void addErrorLog(String msg) {
   }
 }
 int zoomAnimState = 0;
-const unsigned long fetchInterval = 10000;
+const unsigned long fetchInterval = 30000;  // 30s – respeta límite OpenSky
 const unsigned long drawInterval = 1000;   
 
 unsigned long airportDisplayStartTime = 0;
@@ -115,3 +115,14 @@ Preferences preferences;
 WebServer server(80);
 DNSServer dnsServer;
 bool isAPMode = false;
+
+bool pref_show_electricity = true;
+bool pref_show_elec_clock = true;
+bool pref_show_aqi = true;
+float electricity_prices[24] = {0};
+unsigned long lastElectricityFetch = 0;
+
+// Air Quality data
+AirQualityData currentAQI = {0, 0.0f, 0.0f, 0.0f, 0.0f, "", false};
+unsigned long lastAqiFetch = 0;
+String pref_aqicn_token = "996e5fe6b7adda4ed8bb3a401f9ffd95b452d294";
