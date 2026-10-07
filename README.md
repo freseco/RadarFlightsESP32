@@ -36,7 +36,7 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
   - 🌑 **Fase Lunar**: Indicador de la fase lunar actual en la bóveda celeste. Incluye una apertura clásica de reloj mecánico en el reloj analógico, animaciones dinámicas de estrellas fugaces y un transbordador espacial.
   - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
   - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación. Incluye un sistema de predicción visual que te avisa cuándo será visible a simple vista desde tu posición (vía n2yo.com).
-  - ☀️ **Reloj Astronómico**: Representación gráfica en un círculo de 24h de la posición en el cielo del Sol y la Luna utilizando trigonometría (día y noche).
+  - ☀️ **Reloj Astronómico**: Representación gráfica en un círculo de 24h de la posición en el cielo del Sol y la Luna utilizando trigonometría. Incluye el ángulo solar con respecto al horizonte, su hora del cénit y ejes de referencia visual.
 * **Portal Cautivo de Configuración**: No hay que modificar el código para cambiar las credenciales de WiFi o la ubicación. Si no detecta WiFi, levanta su propio punto de acceso (Access Point) llamado `ESP32-Radar` para configuración remota desde el móvil o navegador.
 * **Notificaciones LED RGB**: (Para placas como ESP32-S3-Zero). El LED te avisa de eventos importantes: Parpadeo Amarillo (La ISS está pasando por encima de ti), Rojo fijo (Nuevo avión en el radar) y Verde fijo (Avión ha aterrizado o salido de rango).
 * **Auto-Localización**: Capacidad de ubicarte automáticamente según tu dirección IP para ajustar el radar.
@@ -134,7 +134,7 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
 5. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar.
 6. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
 7. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
-7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche.
+7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche. Se representa visualmente el horizonte, el rayo solar con su ángulo, y la información del cénit.
 8. **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual. Incluye un cielo animado con estrellas de fondo que titilan y estrellas fugaces que cruzan la pantalla esporádicamente.
 
 ---
