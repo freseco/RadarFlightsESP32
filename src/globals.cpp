@@ -1,7 +1,7 @@
 #include "globals.h"
 
 SemaphoreHandle_t dataMutex = NULL;
-const String FIRMWARE_VERSION = "26081201";
+const String FIRMWARE_VERSION = "26100701";
 
 String pref_ssid = "";
 String pref_pass = "";

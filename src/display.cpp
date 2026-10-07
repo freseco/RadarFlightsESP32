@@ -2182,13 +2182,16 @@ void drawElectricityUI(struct tm* timeinfo) {
   spr.setTextSize(1);
   spr.drawString("Euros/kWh", centerX, 95);
   
-  // Draw previous/next
+  // Draw Max/Min
   spr.setTextFont(1);
   spr.setTextSize(1);
-  spr.setTextColor(TFT_LIGHTGREY);
-  sprintf(buf, "%02d:00 -> %.3f", (cur_h > 0 ? cur_h-1 : 0), p_prev);
+  
+  spr.setTextColor(TFT_RED);
+  sprintf(buf, "Max: %.3f", p_max);
   spr.drawString(String(buf), centerX - 60, 120);
-  sprintf(buf, "%02d:00 -> %.3f", (cur_h < 23 ? cur_h+1 : 23), p_next);
+  
+  spr.setTextColor(TFT_GREEN);
+  sprintf(buf, "Min: %.3f", p_min);
   spr.drawString(String(buf), centerX + 60, 120);
   
   // Draw Graph
@@ -2281,11 +2284,12 @@ void drawElecClockUI(struct tm* timeinfo) {
     spr.drawArc(centerX, centerY, 118, 92, cur_start_a, cur_end_a, cur_color, TFT_BLACK, false);
     
     // Dibujar icono del rayo en el medio del segmento
-    float mid_a = (cur_start_a + 7.5) * M_PI / 180.0;
+    float mid_a_deg = cur_start_a + 7.5f;
+    float mid_a = (mid_a_deg + 90.0f) * M_PI / 180.0f;
     int lx = centerX + cos(mid_a) * 105;
     int ly = centerY + sin(mid_a) * 105;
     
-    uint16_t rayColor = TFT_YELLOW;
+    uint16_t rayColor = TFT_BLACK;
     spr.fillTriangle(lx - 2, ly - 5, lx + 3, ly - 5, lx, ly + 1, rayColor);
     spr.fillTriangle(lx, ly - 1, lx + 4, ly - 1, lx - 3, ly + 6, rayColor);
   }
@@ -2303,12 +2307,12 @@ void drawElecClockUI(struct tm* timeinfo) {
   // Draw hour labels
   spr.setTextDatum(MC_DATUM);
   spr.setTextColor(TFT_LIGHTGREY);
-  spr.setTextFont(1);
+  spr.setTextFont(2);
   spr.setTextSize(1);
   for (int i=0; i<24; i+=6) {
     float a = i * 15 * DEG_TO_RAD - PI/2.0;
-    int lx = centerX + cos(a) * 82;
-    int ly = centerY + sin(a) * 82;
+    int lx = centerX + cos(a) * 75;
+    int ly = centerY + sin(a) * 75;
     spr.drawString(String(i), lx, ly);
   }
 
@@ -2325,38 +2329,53 @@ void drawElecClockUI(struct tm* timeinfo) {
     } else {
       spr.drawArc(centerX, centerY, 94, 88, sun_start, sun_end, TFT_YELLOW, TFT_BLACK, false);
     }
+    
+    // Dibujar un sol en el medio del arco de luz solar
+    float mid_sun_angle = (sun_start + sun_end) / 2.0f;
+    if (sun_start > sun_end) {
+      mid_sun_angle = (sun_start + sun_end + 360.0f) / 2.0f;
+      if (mid_sun_angle >= 360.0f) mid_sun_angle -= 360.0f;
+    }
+    float sun_rad = (mid_sun_angle + 90.0f) * M_PI / 180.0f;
+    int sx = centerX + cos(sun_rad) * 82;
+    int sy = centerY + sin(sun_rad) * 82;
+    
+    spr.fillCircle(sx, sy, 5, TFT_YELLOW);
+    for (int i = 0; i < 8; i++) {
+      float ra = (i * 45) * M_PI / 180.0f;
+      spr.drawLine(sx + cos(ra) * 6, sy + sin(ra) * 6, sx + cos(ra) * 9, sy + sin(ra) * 9, TFT_YELLOW);
+    }
   }
 
   // (Pizza slice highlight has been removed as requested)
   // Info in center
   spr.setTextDatum(MC_DATUM);
-  spr.setTextFont(1);
   spr.setTextSize(1);
   
   // Date
   char dbuf[20];
   strftime(dbuf, sizeof(dbuf), "%d/%m/%Y", timeinfo);
   spr.setTextColor(TFT_LIGHTGREY);
-  spr.drawString(String(dbuf), centerX, centerY - 25);
+  spr.setTextFont(2);
+  spr.drawString(String(dbuf), centerX, centerY - 35);
   
   // Max/Min
   char buf[20];
   spr.setTextColor(TFT_RED);
+  spr.setTextFont(2);
   sprintf(buf, "Max: %.3f", p_max);
-  spr.drawString(String(buf), centerX, centerY - 10);
+  spr.drawString(String(buf), centerX, centerY - 15);
   
   spr.setTextColor(TFT_GREEN);
+  spr.setTextFont(2);
   sprintf(buf, "Min: %.3f", p_min);
-  spr.drawString(String(buf), centerX, centerY + 10);
+  spr.drawString(String(buf), centerX, centerY + 5);
   
   // Current Price
   spr.setTextColor(getPriceColor(electricity_prices[cur_h]));
-  spr.setTextSize(2);
-  sprintf(buf, "%.3f", electricity_prices[cur_h]);
+  spr.setTextFont(4);
+  sprintf(buf, "%.3f EUR", electricity_prices[cur_h]);
   spr.drawString(String(buf), centerX, centerY + 30);
-  
-  // Small center dot
-  spr.fillCircle(centerX, centerY, 3, getPriceColor(electricity_prices[cur_h]));
 }
 
 // Returns AQI color matching AQICN standard palette

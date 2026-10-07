@@ -474,7 +474,7 @@ void loop() {
     }
     return;
   } else if (currentState == STATE_ELEC_CLOCK) {
-    if (now - lastDrawTime > 1000) {
+    if (now - lastDrawTime > 250) {
       drawElecClockUI(&timeinfo);
       spr.pushSprite(0, 0);
       lastDrawTime = now;
