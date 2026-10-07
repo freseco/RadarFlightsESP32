@@ -1,5 +1,48 @@
 #include "api.h"
 
+static String os_bearer_token = "";
+static unsigned long os_token_expiry = 0;
+
+void refreshOpenSkyTokenIfNeeded() {
+  if (pref_os_user == "" || pref_os_pass == "") {
+    os_bearer_token = "";
+    return;
+  }
+  
+  if (os_bearer_token != "" && millis() < os_token_expiry) {
+    return; // Token still valid
+  }
+  
+  Serial.println("Obteniendo Bearer token de OpenSky...");
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  
+  http.begin(client, "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token");
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  http.setTimeout(10000);
+  
+  String payload = "grant_type=client_credentials&client_id=" + pref_os_user + "&client_secret=" + pref_os_pass;
+  int httpCode = http.POST(payload);
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String resp = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, resp)) {
+      os_bearer_token = doc["access_token"].as<String>();
+      long expires_in = doc["expires_in"].as<long>(); // usually 1800 (30 min)
+      if (expires_in == 0) expires_in = 1800;
+      // Refresh 60 seconds before it expires
+      os_token_expiry = millis() + (expires_in - 60) * 1000UL;
+      Serial.println("Token obtenido exitosamente.");
+    }
+  } else {
+    Serial.printf("Error obteniendo token: %d\n", httpCode);
+    os_bearer_token = "";
+  }
+  http.end();
+}
+
 void fetchAirplanes() {
   Serial.println("Buscando aviones (OpenSky)...");
 
@@ -20,8 +63,14 @@ void fetchAirplanes() {
 
   WiFiClientSecure client;
   client.setInsecure();
+  
+  refreshOpenSkyTokenIfNeeded();
+  
   HTTPClient http;
   http.begin(client, url);
+  if (os_bearer_token != "") {
+    http.addHeader("Authorization", "Bearer " + os_bearer_token);
+  }
   http.setTimeout(10000);
   http.setUserAgent("RadarFlightsESP32/1.0");
   int httpCode = http.GET();
@@ -433,4 +482,95 @@ void fetchAirQuality() {
     Serial.println("AQI HTTP error: " + String(code));
   }
   http.end();
+}
+
+void fetchCryptoData() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (pref_crypto_coin == "") return;
+
+  // Coinbase uses seconds for granularity: 900 (15m), 3600 (1h), 21600 (6h), 86400 (1d)
+  String granularity = "900"; 
+  if (pref_crypto_period == "1w") { granularity = "21600"; }
+  else if (pref_crypto_period == "1m") { granularity = "86400"; }
+  else if (pref_crypto_period == "1y") { granularity = "86400"; }
+
+  auto fetchCoin = [&](String coin, float* targetArray, int* targetCount, String* targetPriceStr, String* targetChangeStr) {
+    String url = "https://api.exchange.coinbase.com/products/" + coin + "-EUR/candles?granularity=" + granularity;
+    Serial.println("Consultando Crypto Coinbase: " + url);
+
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    http.begin(client, url);
+    http.setTimeout(8000);
+    http.addHeader("User-Agent", "RadarFlightsESP32");
+    
+    int code = http.GET();
+
+    if (code == HTTP_CODE_OK) {
+      String payload = http.getString();
+      JsonDocument doc;
+      DeserializationError err = deserializeJson(doc, payload);
+      if (!err) {
+        JsonArray arr = doc.as<JsonArray>();
+        if (!arr.isNull() && arr.size() > 0) {
+          if (dataMutex != NULL) xSemaphoreTake(dataMutex, portMAX_DELAY);
+          *targetCount = 0;
+          float firstPrice = 0;
+          float lastPrice = 0;
+          
+          int limit = arr.size();
+          if (pref_crypto_period == "1y") { limit = min((int)arr.size(), 300); }
+          else if (pref_crypto_period == "1m") { limit = min((int)arr.size(), 30); }
+          else if (pref_crypto_period == "1w") { limit = min((int)arr.size(), 28); }
+          else { limit = min((int)arr.size(), 96); } 
+          
+          limit = min(limit, 100); 
+          
+          for (int i = limit - 1; i >= 0; i--) {
+            JsonArray kline = arr[i].as<JsonArray>();
+            if (!kline.isNull() && kline.size() >= 5) {
+              float closePrice = kline[4].as<float>();
+              if (*targetCount == 0) firstPrice = closePrice;
+              targetArray[(*targetCount)++] = closePrice;
+              lastPrice = closePrice;
+            }
+          }
+          
+          if (*targetCount > 0 && targetPriceStr != nullptr && targetChangeStr != nullptr) {
+            float change = ((lastPrice - firstPrice) / firstPrice) * 100.0f;
+            if (lastPrice >= 1000) *targetPriceStr = String(lastPrice, 0) + " EUR";
+            else if (lastPrice >= 1) *targetPriceStr = String(lastPrice, 2) + " EUR";
+            else *targetPriceStr = String(lastPrice, 4) + " EUR";
+            
+            *targetChangeStr = (change > 0 ? "+" : "") + String(change, 1) + "%";
+          }
+          if (dataMutex != NULL) xSemaphoreGive(dataMutex);
+          http.end();
+          return true;
+        }
+      } else {
+        addErrorLog("Crypto JSON err");
+      }
+    } else {
+      addErrorLog("Crypto HTTP: " + String(code));
+    }
+    http.end();
+    return false;
+  };
+
+  bool success = fetchCoin(pref_crypto_coin, crypto_prices, &crypto_prices_count, &crypto_current_price, &crypto_change_pct);
+  if (success) {
+    if (pref_crypto_coin == "BTC") {
+      if (dataMutex != NULL) xSemaphoreTake(dataMutex, portMAX_DELAY);
+      crypto_btc_prices_count = crypto_prices_count;
+      for (int i=0; i<crypto_prices_count; i++) crypto_btc_prices[i] = crypto_prices[i];
+      lastCryptoFetch = millis();
+      if (dataMutex != NULL) xSemaphoreGive(dataMutex);
+    } else {
+      if (fetchCoin("BTC", crypto_btc_prices, &crypto_btc_prices_count, nullptr, nullptr)) {
+        lastCryptoFetch = millis();
+      }
+    }
+  }
 }

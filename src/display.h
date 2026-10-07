@@ -20,6 +20,7 @@ void drawWeatherUI(struct tm* timeinfo);
 void drawElectricityUI(struct tm* timeinfo);
 void drawElecClockUI(struct tm* timeinfo);
 void drawAirQualityUI();
+void drawCryptoUI();
 
 void drawGhostPlane();
 void drawWeatherIcon(int x, int y, int type);

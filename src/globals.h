@@ -70,6 +70,7 @@ enum DisplayState {
   STATE_ELECTRICITY,
   STATE_ELEC_CLOCK,
   STATE_AIR_QUALITY,
+  STATE_CRYPTO,
   STATE_MAX
 };
 extern DisplayState currentState;
@@ -82,6 +83,8 @@ void nextState();
 extern String pref_aemet_key;
 extern String pref_idema;
 extern String pref_n2yo_key;
+extern String pref_os_user;
+extern String pref_os_pass;
 
 // ISS Pass Prediction
 extern long    iss_next_pass_time;     // Unix timestamp UTC del próximo paso
@@ -101,12 +104,24 @@ extern bool pref_show_zodiac;
 extern bool pref_show_electricity;
 extern bool pref_show_elec_clock;
 extern bool pref_show_aqi;
+extern bool pref_show_crypto;
+extern String pref_crypto_coin;
+extern String pref_crypto_period;
 extern int pref_screen_time_s;
 extern int pref_radar_time_s;
 
 // Electricity Prices
 extern float electricity_prices[24];
 extern unsigned long lastElectricityFetch;
+
+// Crypto
+extern float crypto_prices[100];
+extern int crypto_prices_count;
+extern unsigned long lastCryptoFetch;
+extern String crypto_current_price;
+extern String crypto_change_pct;
+extern float crypto_btc_prices[100];
+extern int crypto_btc_prices_count;
 
 // Air Quality (AQICN / waqi.info)
 struct AirQualityData {

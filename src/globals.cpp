@@ -92,6 +92,8 @@ int timeDisplayMode = 0;
 String pref_aemet_key = "";
 String pref_idema = "";
 String pref_n2yo_key = "";
+String pref_os_user = "";
+String pref_os_pass = "";
 
 long    iss_next_pass_time     = 0;
 int     iss_next_pass_max_el   = 0;
@@ -126,3 +128,14 @@ unsigned long lastElectricityFetch = 0;
 AirQualityData currentAQI = {0, 0.0f, 0.0f, 0.0f, 0.0f, "", false};
 unsigned long lastAqiFetch = 0;
 String pref_aqicn_token = "996e5fe6b7adda4ed8bb3a401f9ffd95b452d294";
+
+bool pref_show_crypto = true;
+String pref_crypto_coin = "BTCUSDT";
+String pref_crypto_period = "1d";
+float crypto_prices[100] = {0};
+int crypto_prices_count = 0;
+unsigned long lastCryptoFetch = 0;
+String crypto_current_price = "";
+String crypto_change_pct = "";
+float crypto_btc_prices[100];
+int crypto_btc_prices_count = 0;

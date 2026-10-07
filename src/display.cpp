@@ -2496,6 +2496,114 @@ void drawAirQualityUI() {
   spr.fillCircle(centerX, centerY - 3, 2, aqiColor);
 }
 
+void drawCryptoUI() {
+  spr.fillSprite(TFT_BLACK);
+  
+  if (crypto_prices_count == 0) {
+    spr.setTextColor(TFT_WHITE, TFT_BLACK);
+    spr.setTextDatum(MC_DATUM);
+    spr.drawString("Sin datos / Cargando...", centerX, centerY);
+    return;
+  }
+  
+  // Find min and max
+  float minP = crypto_prices[0];
+  float maxP = crypto_prices[0];
+  for (int i = 1; i < crypto_prices_count; i++) {
+    if (crypto_prices[i] < minP) minP = crypto_prices[i];
+    if (crypto_prices[i] > maxP) maxP = crypto_prices[i];
+  }
+  
+  if (maxP == minP) {
+    maxP += 1.0f;
+    minP -= 1.0f;
+  }
+  
+  int chartX = 20;
+  int chartY = 70;
+  int chartW = 200;
+  int chartH = 100;
+  
+  // Draw Title
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  spr.setTextDatum(TC_DATUM);
+  spr.setTextSize(2);
+  spr.drawString(pref_crypto_coin + " (" + pref_crypto_period + ")", centerX, 10);
+  
+  // Draw Price
+  spr.setTextSize(3);
+  spr.drawString(crypto_current_price, centerX, 30);
+  
+  // Draw % change
+  spr.setTextSize(2);
+  if (crypto_change_pct.startsWith("+")) spr.setTextColor(TFT_GREEN, TFT_BLACK);
+  else if (crypto_change_pct.startsWith("-")) spr.setTextColor(TFT_RED, TFT_BLACK);
+  else spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  spr.drawString(crypto_change_pct, centerX, 180);
+  
+  // Draw chart frame
+  spr.drawRect(chartX - 1, chartY - 1, chartW + 2, chartH + 2, spr.color565(50, 50, 50));
+  
+  // Draw BTC line (dotted, orange) if data exists
+  if (crypto_btc_prices_count > 1) {
+    float btcMinP = crypto_btc_prices[0];
+    float btcMaxP = crypto_btc_prices[0];
+    for (int i = 1; i < crypto_btc_prices_count; i++) {
+      if (crypto_btc_prices[i] < btcMinP) btcMinP = crypto_btc_prices[i];
+      if (crypto_btc_prices[i] > btcMaxP) btcMaxP = crypto_btc_prices[i];
+    }
+    if (btcMaxP == btcMinP) { btcMaxP += 1.0f; btcMinP -= 1.0f; }
+    
+    int prevBtcX = -1;
+    int prevBtcY = -1;
+    uint16_t btcColor = spr.color565(255, 165, 0); // Orange
+    
+    for (int i = 0; i < crypto_btc_prices_count; i++) {
+      int x = chartX + (i * chartW) / (crypto_btc_prices_count - 1 > 0 ? crypto_btc_prices_count - 1 : 1);
+      int y = chartY + chartH - ((crypto_btc_prices[i] - btcMinP) / (btcMaxP - btcMinP) * chartH);
+      
+      if (prevBtcX != -1) {
+        // Draw dotted line
+        float dist = sqrt(pow(x - prevBtcX, 2) + pow(y - prevBtcY, 2));
+        int steps = max(1, (int)(dist / 3)); // Dot every ~3 pixels
+        for (int j = 0; j <= steps; j++) {
+          if (j % 2 == 0) { // Only draw half the dots
+            int px = prevBtcX + (x - prevBtcX) * j / steps;
+            int py = prevBtcY + (y - prevBtcY) * j / steps;
+            spr.drawPixel(px, py, btcColor);
+            spr.drawPixel(px, py + 1, btcColor); // Slightly thicker
+          }
+        }
+      }
+      prevBtcX = x;
+      prevBtcY = y;
+    }
+  }
+
+  // Draw selected coin line
+  int prevX = -1;
+  int prevY = -1;
+  uint16_t color = crypto_change_pct.startsWith("+") ? TFT_GREEN : (crypto_change_pct.startsWith("-") ? TFT_RED : TFT_WHITE);
+  
+  for (int i = 0; i < crypto_prices_count; i++) {
+    int x = chartX + (i * chartW) / (crypto_prices_count - 1 > 0 ? crypto_prices_count - 1 : 1);
+    int y = chartY + chartH - ((crypto_prices[i] - minP) / (maxP - minP) * chartH);
+    
+    if (prevX != -1) {
+      spr.drawLine(prevX, prevY, x, y, color);
+      spr.drawLine(prevX, prevY + 1, x, y + 1, color); // thicker line
+    }
+    prevX = x;
+    prevY = y;
+  }
+  
+  // Draw min value
+  spr.setTextDatum(TC_DATUM);
+  spr.setTextSize(2);
+  spr.setTextColor(spr.color565(150, 150, 150), TFT_BLACK);
+  String minStr = "Min: " + String(minP, minP >= 1000 ? 0 : (minP >= 1 ? 2 : 4));
+  spr.drawString(minStr, centerX, 205);
+}
 
  
  

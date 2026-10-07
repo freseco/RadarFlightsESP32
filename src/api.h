@@ -12,3 +12,4 @@ void fetchSunTimes();
 void fetchOpenMeteoWeather();
 void fetchElectricityData();
 void fetchAirQuality();
+void fetchCryptoData();

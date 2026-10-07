@@ -94,6 +94,13 @@ const char* htmlForm = R"=====(
       
       <label>📡 Radio del Radar (km):</label>
       <input type='number' step='1' name='rad' value='%RAD%'>
+
+      <label style="margin-top: 25px; color: #4CAF50; border-top: 1px solid #333; padding-top: 15px;">🌐 OpenSky Network (Opcional - Más límite API):</label>
+      <label>👤 Client ID (OpenSky):</label>
+      <input type='text' name='os_user' value='%OS_USER%' placeholder='Tu Client ID'>
+      <label>🔑 Client Secret (OpenSky):</label>
+      <input type='password' name='os_pass' value='%OS_PASS%' placeholder='Tu Client Secret'>
+      <small style='color:#aaa'>Si tienes errores '429', ve a tu perfil de OpenSky y crea un API Client. Pon aquí el Client ID y Secret. (Autenticación OAuth2 Bearer token)</small>
     </details>
 
 
@@ -138,7 +145,59 @@ const char* htmlForm = R"=====(
         <div class="chk-container"><input type='checkbox' name='sh_elec' value='1' %CHK_ELEC%> Precio Luz (€/kWh)</div>
         <div class="chk-container"><input type='checkbox' name='sh_eclock' value='1' %CHK_ECLOCK%> Reloj Luz (Esfera)</div>
         <div class="chk-container"><input type='checkbox' name='sh_aqi' value='1' %CHK_AQI%> 🌬️ Calidad del Aire (AQI)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_crypto' value='1' %CHK_CRYPTO%> 📈 Gráfica Criptomonedas (Coinbase)</div>
       </div>
+      <label>💰 Criptomoneda (Coinbase EUR):</label>
+      <select name='crypto_coin'>
+        <option value='BTC' %CRYPTO_BTC%>Bitcoin (BTC)</option>
+        <option value='ETH' %CRYPTO_ETH%>Ethereum (ETH)</option>
+        <option value='USDT' %CRYPTO_USDT%>Tether (USDT)</option>
+        <option value='SOL' %CRYPTO_SOL%>Solana (SOL)</option>
+        <option value='BNB' %CRYPTO_BNB%>BNB (BNB)</option>
+        <option value='XRP' %CRYPTO_XRP%>XRP (XRP)</option>
+        <option value='USDC' %CRYPTO_USDC%>USDC (USDC)</option>
+        <option value='ADA' %CRYPTO_ADA%>Cardano (ADA)</option>
+        <option value='DOGE' %CRYPTO_DOGE%>Dogecoin (DOGE)</option>
+        <option value='AVAX' %CRYPTO_AVAX%>Avalanche (AVAX)</option>
+        <option value='TRX' %CRYPTO_TRX%>TRON (TRX)</option>
+        <option value='LINK' %CRYPTO_LINK%>Chainlink (LINK)</option>
+        <option value='DOT' %CRYPTO_DOT%>Polkadot (DOT)</option>
+        <option value='MATIC' %CRYPTO_MATIC%>Polygon (MATIC)</option>
+        <option value='SHIB' %CRYPTO_SHIB%>Shiba Inu (SHIB)</option>
+        <option value='LTC' %CRYPTO_LTC%>Litecoin (LTC)</option>
+        <option value='BCH' %CRYPTO_BCH%>Bitcoin Cash (BCH)</option>
+        <option value='XLM' %CRYPTO_XLM%>Stellar (XLM)</option>
+        <option value='UNI' %CRYPTO_UNI%>Uniswap (UNI)</option>
+        <option value='ATOM' %CRYPTO_ATOM%>Cosmos (ATOM)</option>
+        <option value='ETC' %CRYPTO_ETC%>Ethereum Classic (ETC)</option>
+        <option value='ALGO' %CRYPTO_ALGO%>Algorand (ALGO)</option>
+        <option value='FIL' %CRYPTO_FIL%>Filecoin (FIL)</option>
+        <option value='NEAR' %CRYPTO_NEAR%>NEAR Protocol (NEAR)</option>
+        <option value='APE' %CRYPTO_APE%>ApeCoin (APE)</option>
+        <option value='QNT' %CRYPTO_QNT%>Quant (QNT)</option>
+        <option value='HBAR' %CRYPTO_HBAR%>Hedera (HBAR)</option>
+        <option value='ICP' %CRYPTO_ICP%>Internet Computer (ICP)</option>
+        <option value='SAND' %CRYPTO_SAND%>The Sandbox (SAND)</option>
+        <option value='EOS' %CRYPTO_EOS%>EOS (EOS)</option>
+        <option value='MANA' %CRYPTO_MANA%>Decentraland (MANA)</option>
+        <option value='THETA' %CRYPTO_THETA%>Theta Network (THETA)</option>
+        <option value='AAVE' %CRYPTO_AAVE%>Aave (AAVE)</option>
+        <option value='XTZ' %CRYPTO_XTZ%>Tezos (XTZ)</option>
+        <option value='AXS' %CRYPTO_AXS%>Axie Infinity (AXS)</option>
+        <option value='CHZ' %CRYPTO_CHZ%>Chiliz (CHZ)</option>
+        <option value='ENJ' %CRYPTO_ENJ%>Enjin Coin (ENJ)</option>
+        <option value='DASH' %CRYPTO_DASH%>Dash (DASH)</option>
+        <option value='MKR' %CRYPTO_MKR%>Maker (MKR)</option>
+        <option value='GRT' %CRYPTO_GRT%>The Graph (GRT)</option>
+        <option value='ZEC' %CRYPTO_ZEC%>Zcash (ZEC)</option>
+      </select>
+      <label>⏳ Período Gráfica Cripto:</label>
+      <select name='crypto_period'>
+        <option value='1d' %CPERIOD_1D%>1 Día</option>
+        <option value='1w' %CPERIOD_1W%>1 Semana</option>
+        <option value='1m' %CPERIOD_1M%>1 Mes</option>
+        <option value='1y' %CPERIOD_1Y%>1 Año</option>
+      </select>
       <label>⏳ Tiempo de cada pantalla (segundos):</label>
       <input type='number' name='screen_time' value='%SCREEN_TIME%'>
       <label>⏳ Tiempo en radar (segundos):</label>
@@ -239,6 +298,8 @@ const char* htmlForm = R"=====(
       setLabelByInputName('lat', d.l_lat);
       setLabelByInputName('lon', d.l_lon);
       setLabelByInputName('rad', d.l_rad);
+      setLabelByInputName('os_user', "👤 Client ID (OpenSky):");
+      setLabelByInputName('os_pass', "🔑 Client Secret (OpenSky):");
 
       setLabelByInputName('utc_offset', d.l_utc);
       setLabelByInputName('dst', d.l_dst);
@@ -251,6 +312,8 @@ const char* htmlForm = R"=====(
       setLabelByInputName('ghost', d.l_gho);
       setLabelByInputName('ghost_speed', d.l_spd);
       setLabelByInputName('ghost_trail', d.l_trl);
+      setLabelByInputName('crypto_coin', "💰 Criptomoneda:");
+      setLabelByInputName('crypto_period', "⏳ Período Gráfica Cripto:");
       
       // Selects that don't follow the pattern
       const airportSel = document.getElementById('airportSelect');
@@ -450,6 +513,8 @@ void handleRoot() {
   html.replace("%AIRPORT_ID%", pref_airport_id);
   html.replace("%RAD%", String((int)pref_rad));
   html.replace("%MAXP%", String(pref_max_planes));
+  html.replace("%OS_USER%", pref_os_user);
+  html.replace("%OS_PASS%", pref_os_pass);
 
   html.replace("%N2YO_KEY%", pref_n2yo_key);
   html.replace("%UTC_OFFSET%", String(pref_offset / 3600));
@@ -486,6 +551,29 @@ void handleRoot() {
   html.replace("%CHK_ELEC%", pref_show_electricity ? "checked" : "");
   html.replace("%CHK_ECLOCK%", pref_show_elec_clock ? "checked" : "");
   html.replace("%CHK_AQI%", pref_show_aqi ? "checked" : "");
+  html.replace("%CHK_CRYPTO%", pref_show_crypto ? "checked" : "");
+  
+  // Crypto setup
+  html.replace("%CRYPTO_" + pref_crypto_coin + "%", "selected");
+  html.replace("%CRYPTO_BTC%", ""); html.replace("%CRYPTO_ETH%", ""); html.replace("%CRYPTO_USDT%", "");
+  html.replace("%CRYPTO_SOL%", ""); html.replace("%CRYPTO_BNB%", ""); html.replace("%CRYPTO_XRP%", "");
+  html.replace("%CRYPTO_USDC%", ""); html.replace("%CRYPTO_ADA%", ""); html.replace("%CRYPTO_DOGE%", "");
+  html.replace("%CRYPTO_AVAX%", ""); html.replace("%CRYPTO_TRX%", ""); html.replace("%CRYPTO_LINK%", "");
+  html.replace("%CRYPTO_DOT%", ""); html.replace("%CRYPTO_MATIC%", ""); html.replace("%CRYPTO_SHIB%", "");
+  html.replace("%CRYPTO_LTC%", ""); html.replace("%CRYPTO_BCH%", ""); html.replace("%CRYPTO_XLM%", "");
+  html.replace("%CRYPTO_UNI%", ""); html.replace("%CRYPTO_ATOM%", ""); html.replace("%CRYPTO_ETC%", "");
+  html.replace("%CRYPTO_ALGO%", ""); html.replace("%CRYPTO_FIL%", ""); html.replace("%CRYPTO_NEAR%", "");
+  html.replace("%CRYPTO_APE%", ""); html.replace("%CRYPTO_QNT%", ""); html.replace("%CRYPTO_HBAR%", "");
+  html.replace("%CRYPTO_ICP%", ""); html.replace("%CRYPTO_SAND%", ""); html.replace("%CRYPTO_EOS%", "");
+  html.replace("%CRYPTO_MANA%", ""); html.replace("%CRYPTO_THETA%", ""); html.replace("%CRYPTO_AAVE%", "");
+  html.replace("%CRYPTO_XTZ%", ""); html.replace("%CRYPTO_AXS%", ""); html.replace("%CRYPTO_CHZ%", "");
+  html.replace("%CRYPTO_ENJ%", ""); html.replace("%CRYPTO_DASH%", ""); html.replace("%CRYPTO_MKR%", "");
+  html.replace("%CRYPTO_ZEC%", ""); html.replace("%CRYPTO_GRT%", "");
+  
+  html.replace("%CPERIOD_1D%", pref_crypto_period == "1d" ? "selected" : "");
+  html.replace("%CPERIOD_1W%", pref_crypto_period == "1w" ? "selected" : "");
+  html.replace("%CPERIOD_1M%", pref_crypto_period == "1m" ? "selected" : "");
+  html.replace("%CPERIOD_1Y%", pref_crypto_period == "1y" ? "selected" : "");
   
   html.replace("%FW_VER%", FIRMWARE_VERSION);
   
@@ -562,6 +650,7 @@ void handleSave() {
   pref_show_electricity = server.hasArg("sh_elec");
   pref_show_elec_clock = server.hasArg("sh_eclock");
   pref_show_aqi = server.hasArg("sh_aqi");
+  pref_show_crypto = server.hasArg("sh_crypto");
 
   preferences.putBool("sh_radar", pref_show_radar);
   preferences.putBool("sh_time", pref_show_time);
@@ -575,6 +664,17 @@ void handleSave() {
   
   preferences.putBool("sh_eclock", pref_show_elec_clock);
   preferences.putBool("sh_aqi", pref_show_aqi);
+  preferences.putBool("sh_crypto", pref_show_crypto);
+  
+  if (server.hasArg("crypto_coin")) {
+    preferences.putString("crypto_coin", server.arg("crypto_coin"));
+    pref_crypto_coin = server.arg("crypto_coin");
+  }
+  if (server.hasArg("crypto_period")) {
+    preferences.putString("crypto_period", server.arg("crypto_period"));
+    pref_crypto_period = server.arg("crypto_period");
+  }
+  lastCryptoFetch = 0; // Force update
   
   if (server.hasArg("screen_time")) {
     preferences.putInt("screen_time", server.arg("screen_time").toInt());
@@ -595,6 +695,15 @@ void handleSave() {
   }
 
   preferences.putString("airport_id", server.arg("airport_id"));
+
+  if (server.hasArg("os_user")) {
+    preferences.putString("os_user", server.arg("os_user"));
+    pref_os_user = server.arg("os_user");
+  }
+  if (server.hasArg("os_pass")) {
+    preferences.putString("os_pass", server.arg("os_pass"));
+    pref_os_pass = server.arg("os_pass");
+  }
 
   if (server.hasArg("n2yo_key")) {
     preferences.putString("n2yo_key", server.arg("n2yo_key"));

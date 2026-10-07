@@ -77,6 +77,13 @@ void networkTask(void *pvParameters) {
       lastAqiFetch = millis();
     }
     
+    if (now - lastCryptoFetch > 900000 || lastCryptoFetch == 0) { // Every 15 min
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchCryptoData();
+      }
+      // lastCryptoFetch is updated inside fetchCryptoData to avoid skipping on failure.
+    }
+    
     vTaskDelay(pdMS_TO_TICKS(10)); // Yield para el Watchdog y otras tareas RTOS
   }
 }
@@ -127,6 +134,8 @@ void setup() {
   pref_aemet_key = preferences.getString("aemet_key", "");
   pref_idema     = preferences.getString("aemet_idema", "");
   pref_n2yo_key  = preferences.getString("n2yo_key", "");
+  pref_os_user   = preferences.getString("os_user", "");
+  pref_os_pass   = preferences.getString("os_pass", "");
   pref_show_radar = preferences.getBool("sh_radar", true);
   pref_show_time = preferences.getBool("sh_time", true);
   pref_show_weather = preferences.getBool("sh_wea", true);
@@ -138,6 +147,9 @@ void setup() {
   pref_show_electricity = preferences.getBool("sh_elec", true);
   pref_show_elec_clock = preferences.getBool("sh_eclock", true);
   pref_show_aqi = preferences.getBool("sh_aqi", true);
+  pref_show_crypto = preferences.getBool("sh_crypto", true);
+  pref_crypto_coin = preferences.getString("crypto_coin", "BTCUSDT");
+  pref_crypto_period = preferences.getString("crypto_period", "1d");
   
   pref_screen_time_s = preferences.getInt("screen_time", 30);
   pref_radar_time_s = preferences.getInt("radar_time", 30);
@@ -283,6 +295,7 @@ void nextState() {
     else if (currentState == STATE_ELECTRICITY && pref_show_electricity) enabled = true;
     else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock) enabled = true;
     else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) enabled = true;
+    else if (currentState == STATE_CRYPTO && pref_show_crypto) enabled = true;
     
     if (enabled) {
       if (currentState == STATE_TIME) {
@@ -487,8 +500,14 @@ void loop() {
       lastDrawTime = now;
     }
     return;
+  } else if (currentState == STATE_CRYPTO) {
+    if (now - lastDrawTime > 1000) {
+      drawCryptoUI();
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
   }
-
 
   
   if (pref_airport_id != "" && !pref_geoip) {
@@ -630,6 +649,14 @@ void loop() {
     }
     
     setLED(r, g, b);
+  } else if (currentState == STATE_CRYPTO) {
+    if (crypto_change_pct.startsWith("+")) {
+      setLED(0, 255, 0); // Verde
+    } else if (crypto_change_pct.startsWith("-")) {
+      setLED(255, 0, 0); // Rojo
+    } else {
+      setLED(255, 255, 255); // Blanco si no hay cambio o error
+    }
   } else {
     // Apagado
     setLED(0, 0, 0); 
