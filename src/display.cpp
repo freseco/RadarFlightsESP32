@@ -1814,7 +1814,11 @@ void drawSunArc(struct tm* timeinfo) {
   uint16_t angColor = (horizon_angle >= 0) ? spr.color565(255, 220, 100) : spr.color565(130, 180, 255);
 
   // Eje 2: Rayo desde el centro del horizonte hacia la posición del sol
-  spr.drawLine(hX, hY, sx, sy, angColor);
+  // Solo se dibuja cuando el sol está sobre el horizonte
+  bool sunAboveHorizon = (horizon_angle >= 0);
+  if (sunAboveHorizon) {
+    spr.drawLine(hX, hY, sx, sy, angColor);
+  }
 
   // Arco representativo del ángulo formado entre el horizonte y el eje del sol
   float aStart = 0, aEnd = 0;
@@ -1828,7 +1832,7 @@ void drawSunArc(struct tm* timeinfo) {
     aStart = sun_angle; aEnd = 180.0f;
   }
 
-  for (int ra = 18; ra <= 20; ra++) {
+  for (int ra = 18; sunAboveHorizon && ra <= 20; ra++) {
     for (float a = aStart; a <= aEnd; a += 1.5f) {
       float rad = a * M_PI / 180.0f;
       spr.drawPixel(hX + (int)round(cos(rad) * ra), hY + (int)round(sin(rad) * ra), angColor);
