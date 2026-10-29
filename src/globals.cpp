@@ -16,6 +16,20 @@ String pref_lang = "es";
 String pref_units = "m";
 long pref_offset = 7200; // default 2h (CEST)
 bool pref_dst = false;
+String pref_tz = "CET-1CEST,M3.5.0,M10.5.0/3"; // Spain/Madrid POSIX TZ
+
+long getCurrentUtcOffset() {
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo, 10)) {
+    // Offset (incl. DST) = local wall clock interpreted as UTC minus real UTC epoch
+    time_t nowT = time(nullptr);
+    struct tm gt;
+    gmtime_r(&nowT, &gt);
+    gt.tm_isdst = timeinfo.tm_isdst;
+    return (long)(nowT - mktime(&gt));
+  }
+  return pref_offset; // Fallback
+}
 int pref_ghost_mins = 10;
 int pref_ghost_speed = 150;
 int pref_ghost_trail = 100;

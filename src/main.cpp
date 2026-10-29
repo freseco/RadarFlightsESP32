@@ -88,6 +88,41 @@ void networkTask(void *pvParameters) {
   }
 }
 
+// Map IANA timezone names (ip-api "timezone") to POSIX TZ strings that include DST rules.
+// Returns nullptr when unknown.
+static const char* posixFromIana(const char* iana) {
+  struct TzMap { const char* iana; const char* posix; };
+  static const TzMap tzMap[] = {
+    {"Europe/Madrid", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Africa/Ceuta", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Atlantic/Canary", "WET0WEST,M3.5.0/1,M10.5.0"},
+    {"Europe/Lisbon", "WET0WEST,M3.5.0/1,M10.5.0"},
+    {"Europe/London", "GMT0BST,M3.5.0/1,M10.5.0"},
+    {"Europe/Dublin", "GMT0BST,M3.5.0/1,M10.5.0"},
+    {"Europe/Paris", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Berlin", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Amsterdam", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Brussels", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Rome", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Zurich", "CET-1CEST,M3.5.0,M10.5.0/3"},
+    {"Europe/Athens", "EET-2EEST,M3.5.0/3,M10.5.0/4"},
+    {"Europe/Moscow", "MSK-3"},
+    {"Asia/Kolkata", "IST-5:30"},
+    {"Asia/Tokyo", "JST-9"},
+    {"Australia/Sydney", "AEST-10AEDT,M10.1.0,M4.1.0/3"},
+    {"Pacific/Auckland", "NZST-12NZDT,M9.5.0,M4.1.0/3"},
+    {"America/New_York", "EST5EDT,M3.2.0,M11.1.0"},
+    {"America/Chicago", "CST6CDT,M3.2.0,M11.1.0"},
+    {"America/Denver", "MST7MDT,M3.2.0,M11.1.0"},
+    {"America/Los_Angeles", "PST8PDT,M3.2.0,M11.1.0"},
+  };
+  for (const auto& e : tzMap) {
+    if (strcmp(e.iana, iana) == 0) return e.posix;
+  }
+  return nullptr;
+}
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000); 
@@ -128,6 +163,7 @@ void setup() {
   pref_units = preferences.getString("units", "m");
   pref_offset = preferences.getLong("offset", 3600); // Default to UTC+1
   pref_dst = preferences.getBool("dst", true); // Default to DST ON for summer
+  pref_tz = preferences.getString("tz", "CET-1CEST,M3.5.0,M10.5.0/3"); // POSIX timezone
   pref_ghost_mins = preferences.getInt("ghost", 10);
   pref_ghost_speed = preferences.getInt("ghost_speed", 150);
   pref_ghost_trail = preferences.getInt("ghost_trail", 100);
@@ -154,7 +190,7 @@ void setup() {
   pref_screen_time_s = preferences.getInt("screen_time", 30);
   pref_radar_time_s = preferences.getInt("radar_time", 30);
 
-  configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
+  configTzTime(pref_tz.c_str(), "pool.ntp.org", "time.nist.gov");
 
   spr.createSprite(240, 240);
   
@@ -208,7 +244,7 @@ void setup() {
       tft.drawString("Localizando por IP...", centerX, centerY);
       
       HTTPClient httpGeo;
-      httpGeo.begin("http://ip-api.com/json/?fields=status,lat,lon,country,offset");
+      httpGeo.begin("http://ip-api.com/json/?fields=status,lat,lon,country,offset,timezone");
       int code = httpGeo.GET();
       if (code == HTTP_CODE_OK) {
         String payload = httpGeo.getString();
@@ -218,8 +254,9 @@ void setup() {
             pref_lat = geoDoc["lat"];
             pref_lon = geoDoc["lon"];
             if (geoDoc["country"]) pref_country = geoDoc["country"].as<String>();
+            long fetchedOffset = 0;
             if (geoDoc["offset"]) {
-                long fetchedOffset = geoDoc["offset"].as<long>();
+                fetchedOffset = geoDoc["offset"].as<long>();
                 pref_offset = fetchedOffset;
                 pref_dst = false; 
             }
@@ -229,7 +266,16 @@ void setup() {
             preferences.putLong("offset", pref_offset);
             preferences.putBool("dst", pref_dst);
             
-            configTime(pref_offset, 0, "pool.ntp.org", "time.nist.gov");
+            // Build POSIX TZ string from fetched offset
+            int hrs = fetchedOffset / 3600;
+            // Note: POSIX TZ uses inverted sign (UTC-N means ahead of UTC)
+            char tzBuf[64];
+            snprintf(tzBuf, sizeof(tzBuf), "<%+03d>%d", hrs, -hrs); // fixed-offset fallback (no DST)
+            // Prefer a real POSIX rule (with DST) from the IANA zone; fixed offset only if unknown
+            const char* mappedTz = posixFromIana(geoDoc["timezone"] | "");
+            pref_tz = mappedTz ? String(mappedTz) : String(tzBuf);
+            preferences.putString("tz", pref_tz);
+            configTzTime(pref_tz.c_str(), "pool.ntp.org", "time.nist.gov");
             
             Serial.printf("GeoIP: %.4f, %.4f, %s, Offset: %ld\n", pref_lat, pref_lon, pref_country.c_str(), pref_offset);
           }
@@ -606,7 +652,7 @@ void loop() {
     struct tm now_tm;
     if (getLocalTime(&now_tm, 10)) {
       time_t local_unix = mktime(&now_tm);
-      time_t now_utc    = local_unix - pref_offset - (pref_dst ? 3600 : 0);
+      time_t now_utc    = local_unix; // mktime() already honours the POSIX TZ -> UTC epoch
       if (now_utc >= iss_next_pass_time && now_utc <= (iss_next_pass_time + iss_next_pass_duration)) {
         iss_visible = true;
       }

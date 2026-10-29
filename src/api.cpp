@@ -286,8 +286,7 @@ void fetchISSPass() {
           // Convertir a UTC restando el offset
           struct tm utc_tm = now_tm;
           time_t local_unix = mktime(&utc_tm);
-          now_unix = local_unix - pref_offset;
-          if (pref_dst) now_unix -= 3600;
+          now_unix = local_unix; // mktime() already returns the UTC epoch
         }
 
         // Buscar el primer paso que aún no haya empezado
@@ -338,8 +337,13 @@ void fetchSunTimes() {
         
         int y, M, d, h, m, s;
         if (sscanf(sr.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
-          h += (pref_offset / 3600);
-          if (pref_dst) h += 1;
+          // Sun times come in UTC: convert with the real offset (DST aware, minutes included)
+          int tz_mins = (int)(getCurrentUtcOffset() / 60);
+          int tz_hours = tz_mins / 60;
+          int tz_rem = tz_mins % 60;
+          m += tz_rem;
+          if (m >= 60) { m -= 60; h++; } else if (m < 0) { m += 60; h--; }
+          h += tz_hours;
           if (h >= 24) h -= 24; else if (h < 0) h += 24;
           char buf[10];
           sprintf(buf, "%02d:%02d", h, m);
@@ -347,8 +351,8 @@ void fetchSunTimes() {
           int sr_mins = h * 60 + m;
           
           if (sscanf(sn.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
-            h += (pref_offset / 3600);
-            if (pref_dst) h += 1;
+            m += tz_rem; if (m >= 60) { m -= 60; h++; } else if (m < 0) { m += 60; h--; }
+            h += tz_hours;
             if (h >= 24) h -= 24; else if (h < 0) h += 24;
             char buf[10];
             sprintf(buf, "%02d:%02d", h, m);
@@ -356,8 +360,8 @@ void fetchSunTimes() {
           }
 
           if (sscanf(ss.c_str(), "%d-%d-%dT%d:%d:%d", &y, &M, &d, &h, &m, &s) == 6) {
-            h += (pref_offset / 3600);
-            if (pref_dst) h += 1;
+            m += tz_rem; if (m >= 60) { m -= 60; h++; } else if (m < 0) { m += 60; h--; }
+            h += tz_hours;
             if (h >= 24) h -= 24; else if (h < 0) h += 24;
             sprintf(buf, "%02d:%02d", h, m);
             sunsetTimeStr = String(buf);

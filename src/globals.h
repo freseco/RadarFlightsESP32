@@ -26,6 +26,11 @@ extern String pref_lang;
 extern String pref_units;
 extern long pref_offset;
 extern bool pref_dst;
+extern String pref_tz;  // POSIX timezone string (e.g. "CET-1CEST,M3.5.0,M10.5.0/3")
+
+// Helper: get current UTC offset in seconds from the system (handles DST automatically)
+long getCurrentUtcOffset();
+
 extern int pref_ghost_mins;
 extern int pref_ghost_speed;
 extern int pref_ghost_trail;

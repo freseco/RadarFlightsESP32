@@ -375,8 +375,8 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
   // 3. Dibujar la luna (se mueve en arco según la fracción)
   // moon_fraction va de 0.0 (nueva) a 0.5 (llena) a 1.0 (nueva)
   float moonAngle = (-180.0 + moon_fraction * 180.0) * M_PI / 180.0;
-  int mR = 8; // Radio de la luna
-  int orbitR = R - mR - 2; 
+  int mR = 11; // Radio de la luna
+  int orbitR = 12; // Órbita ajustada a la máscara
   int moonX = mX + orbitR * cos(moonAngle);
   int moonY = mY + orbitR * sin(moonAngle);
   uint16_t moonColor = spr.color565(255, 240, 150);
@@ -386,12 +386,15 @@ void drawAnalogTimeUI(struct tm* timeinfo) {
   spr.fillRect(mX - R, mY, R * 2 + 1, R + 1, faceColor);
   
   // Dos círculos que suben para hacer la forma característica
-  int humpR = 14; 
+  int humpR = 12; 
   spr.fillCircle(mX - 12, mY, humpR, faceColor);
   spr.fillCircle(mX + 12, mY, humpR, faceColor);
   
-  // Contorno sutil del arco superior
-  spr.drawCircle(mX, mY, R, spr.color565(80, 80, 80));
+  // Contorno sutil del arco superior (dibujado solo la mitad)
+  for (int i = 180; i <= 360; i++) {
+    float a = i * M_PI / 180.0;
+    spr.drawPixel(mX + R * cos(a), mY + R * sin(a), spr.color565(80, 80, 80));
+  }
   
   // Calcular ángulos de las agujas
   float secAngle = timeinfo->tm_sec * 6.0 * M_PI / 180.0;
@@ -1701,7 +1704,7 @@ void drawISS() {
     long secsLeft = 0;
     if (getLocalTime(&now_tm, 10)) {
       time_t local_unix = mktime(&now_tm);
-      time_t now_utc    = local_unix - pref_offset - (pref_dst ? 3600 : 0);
+      time_t now_utc    = local_unix; // mktime() already honours the POSIX TZ -> UTC epoch
       secsLeft = (long)iss_next_pass_time - (long)now_utc;
     }
 
@@ -2420,17 +2423,24 @@ void drawAirQualityUI() {
 
   spr.fillCircle(centerX, centerY, radarRadius, bgColor);
 
-  // Arco de progreso (0-300 AQI → 0-270°)
+  // Arcos de progreso en ambos laterales (0-300 AQI → 0-135° por lado)
   int arcAqi   = aqi > 300 ? 300 : aqi;
-  int arcDeg   = (int)((arcAqi / 300.0f) * 270);
-  int arcStart = 135;
-  // Background arc track
+  int arcDeg   = (int)((arcAqi / 300.0f) * 135);
+  
+  // Background arc tracks (derecha e izquierda)
   spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-              arcStart, arcStart + 270, spr.color565(40, 40, 50), bgColor, false);
+              30, 165, spr.color565(40, 40, 50), bgColor, false); // Right track
+  spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
+              195, 330, spr.color565(40, 40, 50), bgColor, false); // Left track
+              
   // Colored progress
   if (arcDeg > 0) {
+    // Lado derecho (crece desde abajo hacia arriba)
     spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-                arcStart, arcStart + arcDeg, aqiColor, bgColor, false);
+                165 - arcDeg, 165, aqiColor, bgColor, false);
+    // Lado izquierdo (crece desde abajo hacia arriba)
+    spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
+                195, 195 + arcDeg, aqiColor, bgColor, false);
   }
 
   // Border

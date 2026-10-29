@@ -114,13 +114,44 @@ const char* htmlForm = R"=====(
 
     <details>
       <summary>🕒 Hora y Fecha</summary>
-      <label>🕒 Zona Horaria (Horas desde UTC):</label>
-      <input type='number' step='1' name='utc_offset' value='%UTC_OFFSET%'>
-      <label>☀️ Horario de Verano (+1h):</label>
-      <select name='dst'>
-        <option value='1' %DST_ON%>Activado</option>
-        <option value='0' %DST_OFF%>Desactivado</option>
+      <label>🕒 Zona Horaria:</label>
+      <select name='timezone'>
+        <option value='CET-1CEST,M3.5.0,M10.5.0/3' %TZ_MADRID%>🇪🇸 España (Madrid) CET/CEST</option>
+        <option value='WET0WEST,M3.5.0/1,M10.5.0' %TZ_CANARIAS%>🇪🇸 Canarias WET/WEST</option>
+        <option value='GMT0BST,M3.5.0/1,M10.5.0' %TZ_LONDON%>🇬🇧 Londres GMT/BST</option>
+        <option value='CET-1CEST,M3.5.0,M10.5.0/3' %TZ_PARIS%>🇫🇷 París CET/CEST</option>
+        <option value='CET-1CEST,M3.5.0,M10.5.0/3' %TZ_BERLIN%>🇩🇪 Berlín CET/CEST</option>
+        <option value='CET-1CEST,M3.5.0,M10.5.0/3' %TZ_AMSTERDAM%>🇳🇱 Ámsterdam CET/CEST</option>
+        <option value='EET-2EEST,M3.5.0/3,M10.5.0/4' %TZ_ATHENS%>🇬🇷 Atenas EET/EEST</option>
+        <option value='MSK-3' %TZ_MOSCOW%>🇷🇺 Moscú MSK</option>
+        <option value='<+04>-4' %TZ_DUBAI%>🇦🇪 Dubái GMT+4</option>
+        <option value='IST-5:30' %TZ_INDIA%>🇮🇳 India IST</option>
+        <option value='CST-8' %TZ_CHINA%>🇨🇳 China CST</option>
+        <option value='JST-9' %TZ_TOKYO%>🇯🇵 Tokio JST</option>
+        <option value='<+08>-8' %TZ_SINGAPORE%>🇸🇬 Singapur SGT</option>
+        <option value='AEST-10AEDT,M10.1.0,M4.1.0/3' %TZ_SYDNEY%>🇦🇺 Sídney AEST/AEDT</option>
+        <option value='NZST-12NZDT,M9.5.0,M4.1.0/3' %TZ_AUCKLAND%>🇳🇿 Auckland NZST</option>
+        <option value='EST5EDT,M3.2.0,M11.1.0' %TZ_NEWYORK%>🇺🇸 Nueva York EST/EDT</option>
+        <option value='CST6CDT,M3.2.0,M11.1.0' %TZ_CHICAGO%>🇺🇸 Chicago CST/CDT</option>
+        <option value='MST7MDT,M3.2.0,M11.1.0' %TZ_DENVER%>🇺🇸 Denver MST/MDT</option>
+        <option value='PST8PDT,M3.2.0,M11.1.0' %TZ_LOSANGELES%>🇺🇸 Los Ángeles PST/PDT</option>
+        <option value='<-03>3' %TZ_BUENOSAIRES%>🇦🇷 Buenos Aires ART</option>
+        <option value='<-03>3' %TZ_SAO_PAULO%>🇧🇷 São Paulo BRT</option>
+        <option value='<-05>5' %TZ_BOGOTA%>🇨🇴 Bogotá COT</option>
+        <option value='<-05>5' %TZ_LIMA%>🇵🇪 Lima PET</option>
+        <option value='<-06>6' %TZ_MEXICO%>🇲🇽 Ciudad de México CST</option>
+        <option value='<-04>4' %TZ_SANTIAGO%>🇨🇱 Santiago CLT</option>
+        <option value='<-04>4' %TZ_PUNTACANA%>🇩🇴 Punta Cana AST</option>
+        <option value='<-05>5' %TZ_HAVANA%>🇨🇺 La Habana CST</option>
+        <option value='SAST-2' %TZ_JOHANNESBURG%>🇿🇦 Johannesburgo SAST</option>
+        <option value='EAT-3' %TZ_NAIROBI%>🇰🇪 Nairobi EAT</option>
+        <option value='<+01>-1' %TZ_CASABLANCA%>🇲🇦 Casablanca CET</option>
+        <option value='EET-2' %TZ_CAIRO%>🇪🇬 El Cairo EET</option>
+        <option value='EAT-3' %TZ_ADDIS%>🇪🇹 Adís Abeba EAT</option>
       </select>
+      <label>🕒 Zona personalizada (POSIX, avanzado):</label>
+      <input type='text' name='tz_custom' value='%TZ_CUSTOM%' placeholder='Ej: CET-1CEST,M3.5.0,M10.5.0/3'>
+      <small style='color:#aaa'>Si tu zona no está arriba, escribe la cadena POSIX aquí. Si se rellena, tiene prioridad.</small>
       <label>⌚ Modo de Reloj:</label>
       <select name='clock_mode'>
         <option value='0' %CM_0%>Ciclar todos</option>
@@ -517,9 +548,40 @@ void handleRoot() {
   html.replace("%OS_PASS%", pref_os_pass);
 
   html.replace("%N2YO_KEY%", pref_n2yo_key);
-  html.replace("%UTC_OFFSET%", String(pref_offset / 3600));
-  html.replace("%DST_ON%", pref_dst ? "selected" : "");
-  html.replace("%DST_OFF%", !pref_dst ? "selected" : "");
+  // Timezone dropdown - mark the matching option as selected
+  const char* tzOptions[] = {
+    "CET-1CEST,M3.5.0,M10.5.0/3", "WET0WEST,M3.5.0/1,M10.5.0", "GMT0BST,M3.5.0/1,M10.5.0",
+    "EET-2EEST,M3.5.0/3,M10.5.0/4", "MSK-3", "<+04>-4", "IST-5:30", "CST-8", "JST-9",
+    "<+08>-8", "AEST-10AEDT,M10.1.0,M4.1.0/3", "NZST-12NZDT,M9.5.0,M4.1.0/3",
+    "EST5EDT,M3.2.0,M11.1.0", "CST6CDT,M3.2.0,M11.1.0", "MST7MDT,M3.2.0,M11.1.0",
+    "PST8PDT,M3.2.0,M11.1.0", "<-03>3", "<-05>5", "<-06>6", "<-04>4",
+    "SAST-2", "EAT-3", "<+01>-1", "EET-2"
+  };
+  const char* tzPlaceholders[] = {
+    "%TZ_MADRID%", "%TZ_CANARIAS%", "%TZ_LONDON%",
+    "%TZ_ATHENS%", "%TZ_MOSCOW%", "%TZ_DUBAI%", "%TZ_INDIA%", "%TZ_CHINA%", "%TZ_TOKYO%",
+    "%TZ_SINGAPORE%", "%TZ_SYDNEY%", "%TZ_AUCKLAND%",
+    "%TZ_NEWYORK%", "%TZ_CHICAGO%", "%TZ_DENVER%",
+    "%TZ_LOSANGELES%", "%TZ_BUENOSAIRES%", "%TZ_BOGOTA%", "%TZ_MEXICO%", "%TZ_SANTIAGO%",
+    "%TZ_JOHANNESBURG%", "%TZ_NAIROBI%", "%TZ_CASABLANCA%", "%TZ_CAIRO%"
+  };
+  // Paris, Berlin, Amsterdam share the same TZ as Madrid
+  html.replace("%TZ_PARIS%", pref_tz == "CET-1CEST,M3.5.0,M10.5.0/3" ? "" : "");
+  html.replace("%TZ_BERLIN%", "");
+  html.replace("%TZ_AMSTERDAM%", "");
+  html.replace("%TZ_SAO_PAULO%", pref_tz == "<-03>3" ? "" : "");
+  html.replace("%TZ_LIMA%", pref_tz == "<-05>5" ? "" : "");
+  html.replace("%TZ_PUNTACANA%", pref_tz == "<-04>4" ? "" : "");
+  html.replace("%TZ_HAVANA%", pref_tz == "<-05>5" ? "" : "");
+  html.replace("%TZ_ADDIS%", pref_tz == "EAT-3" ? "" : "");
+  bool tzKnown = false;
+  for (int i = 0; i < 24; i++) {
+    bool sel = (pref_tz == tzOptions[i]);
+    if (sel) tzKnown = true;
+    html.replace(tzPlaceholders[i], sel ? "selected" : "");
+  }
+  // Only fill the custom field when the saved TZ is not in the dropdown
+  html.replace("%TZ_CUSTOM%", tzKnown ? String("") : pref_tz);
   
   html.replace("%CM_0%", pref_clock_mode == 0 ? "selected" : "");
   html.replace("%CM_1%", pref_clock_mode == 1 ? "selected" : "");
@@ -715,6 +777,10 @@ void handleSave() {
     preferences.putLong("offset", server.arg("utc_offset").toInt() * 3600);
     preferences.putBool("dst", server.arg("dst") == "1");
   }
+  String new_tz = server.arg("tz_custom");
+  new_tz.trim();
+  if (new_tz.length() == 0) new_tz = server.arg("timezone");
+  if (new_tz.length() > 0) preferences.putString("tz", new_tz);
   
   // Actualizar variables en memoria
   pref_ssid = new_ssid;
@@ -727,10 +793,9 @@ void handleSave() {
   pref_color = server.arg("color");
   pref_airport_id = server.arg("airport_id");
 
-  if (server.hasArg("utc_offset")) {
-    pref_offset = server.arg("utc_offset").toInt() * 3600;
-    pref_dst = server.arg("dst") == "1";
-    configTime(pref_offset + (pref_dst ? 3600 : 0), 0, "pool.ntp.org", "time.nist.gov");
+  if (new_tz.length() > 0) {
+    pref_tz = new_tz;
+    configTzTime(pref_tz.c_str(), "pool.ntp.org", "time.nist.gov");
   }
   airportShownInitially = false;
 
