@@ -578,3 +578,70 @@ void fetchCryptoData() {
     }
   }
 }
+
+// ─── Fetch 3-day daily forecast from Open-Meteo ───────────────────────────────
+void fetchForecast() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
+  String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(pref_lat, 4)
+             + "&longitude=" + String(pref_lon, 4)
+             + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum"
+             + "&timezone=auto&forecast_days=3";
+  http.begin(client, url);
+  http.setTimeout(8000);
+  int code = http.GET();
+  if (code == 200) {
+    String payload = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      JsonObject daily = doc["daily"];
+      if (!daily.isNull()) {
+        JsonArray codes  = daily["weather_code"];
+        JsonArray tamaxA = daily["temperature_2m_max"];
+        JsonArray taminA = daily["temperature_2m_min"];
+        JsonArray precA  = daily["precipitation_sum"];
+        for (int i = 0; i < 3 && i < (int)codes.size(); i++) {
+          forecast[i].weather_code = codes[i].as<int>();
+          forecast[i].tamax        = tamaxA[i].as<float>();
+          forecast[i].tamin        = taminA[i].as<float>();
+          forecast[i].prec_sum     = precA[i].as<float>();
+          forecast[i].valid        = 1;
+        }
+        lastForecastFetch = millis();
+        Serial.println("Forecast OK");
+      }
+    }
+  } else {
+    addErrorLog("Forecast HTTP " + String(code));
+  }
+  http.end();
+}
+
+// ─── Fetch latest RainViewer radar frame path ────────────────────────────────
+void fetchRainViewerPath() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  http.begin("https://api.rainviewer.com/public/weather-maps.json");
+  http.setTimeout(6000);
+  int code = http.GET();
+  if (code == 200) {
+    String payload = http.getString();
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      JsonArray frames = doc["radar"]["past"];
+      if (!frames.isNull() && frames.size() > 0) {
+        // Latest frame is the last element
+        String path = frames[frames.size()-1]["path"].as<String>();
+        rainviewer_tile_path = path;
+        lastRainRadarFetch = millis();
+        Serial.println("RainViewer path: " + path);
+      }
+    }
+  } else {
+    addErrorLog("RainViewer HTTP " + String(code));
+  }
+  http.end();
+}

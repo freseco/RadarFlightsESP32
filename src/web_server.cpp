@@ -177,6 +177,7 @@ const char* htmlForm = R"=====(
         <div class="chk-container"><input type='checkbox' name='sh_eclock' value='1' %CHK_ECLOCK%> Reloj Luz (Esfera)</div>
         <div class="chk-container"><input type='checkbox' name='sh_aqi' value='1' %CHK_AQI%> 🌬️ Calidad del Aire (AQI)</div>
         <div class="chk-container"><input type='checkbox' name='sh_crypto' value='1' %CHK_CRYPTO%> 📈 Gráfica Criptomonedas (Coinbase)</div>
+        <div class="chk-container"><input type='checkbox' name='sh_rrain' value='1' %CHK_RRAIN%> 🌧️ Radar de Lluvia</div>
       </div>
       <label>💰 Criptomoneda (Coinbase EUR):</label>
       <select name='crypto_coin'>
@@ -614,6 +615,7 @@ void handleRoot() {
   html.replace("%CHK_ECLOCK%", pref_show_elec_clock ? "checked" : "");
   html.replace("%CHK_AQI%", pref_show_aqi ? "checked" : "");
   html.replace("%CHK_CRYPTO%", pref_show_crypto ? "checked" : "");
+  html.replace("%CHK_RRAIN%", pref_show_rain_radar ? "checked" : "");
   
   // Crypto setup
   html.replace("%CRYPTO_" + pref_crypto_coin + "%", "selected");
@@ -713,6 +715,7 @@ void handleSave() {
   pref_show_elec_clock = server.hasArg("sh_eclock");
   pref_show_aqi = server.hasArg("sh_aqi");
   pref_show_crypto = server.hasArg("sh_crypto");
+  pref_show_rain_radar = server.hasArg("sh_rrain");
 
   preferences.putBool("sh_radar", pref_show_radar);
   preferences.putBool("sh_time", pref_show_time);
@@ -727,6 +730,7 @@ void handleSave() {
   preferences.putBool("sh_eclock", pref_show_elec_clock);
   preferences.putBool("sh_aqi", pref_show_aqi);
   preferences.putBool("sh_crypto", pref_show_crypto);
+  preferences.putBool("sh_rrain", pref_show_rain_radar);
   
   if (server.hasArg("crypto_coin")) {
     preferences.putString("crypto_coin", server.arg("crypto_coin"));

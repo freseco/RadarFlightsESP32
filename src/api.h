@@ -13,3 +13,5 @@ void fetchOpenMeteoWeather();
 void fetchElectricityData();
 void fetchAirQuality();
 void fetchCryptoData();
+void fetchForecast();
+void fetchRainViewerPath();

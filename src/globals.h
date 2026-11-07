@@ -67,6 +67,7 @@ enum DisplayState {
   STATE_RADAR,
   STATE_TIME,
   STATE_WEATHER,
+  STATE_RAIN_RADAR,
   STATE_MOON,
   STATE_HORIZON,
   STATE_ISS,
@@ -110,6 +111,7 @@ extern bool pref_show_electricity;
 extern bool pref_show_elec_clock;
 extern bool pref_show_aqi;
 extern bool pref_show_crypto;
+extern bool pref_show_rain_radar;
 extern String pref_crypto_coin;
 extern String pref_crypto_period;
 extern int pref_screen_time_s;
@@ -155,6 +157,22 @@ extern String sunsetTimeStr;
 extern String solarNoonTimeStr;
 extern float sun_progress;
 extern unsigned long lastSunFetch;
+
+// 3-day forecast data
+struct DayForecast {
+  int   weather_code;
+  float tamax;
+  float tamin;
+  float prec_sum;   // mm
+  int   valid;
+};
+extern DayForecast forecast[3];  // [0]=today, [1]=tomorrow, [2]=day3
+extern unsigned long lastForecastFetch;
+
+// Rain Radar (RainViewer)
+extern String rainviewer_tile_path;   // e.g. /v2/radar/1234567890/256/{z}/{x}/{y}/2/1_1.png
+extern unsigned long lastRainRadarFetch;
+extern bool pref_show_rain_radar;
 
 struct WeatherData {
   float ta;

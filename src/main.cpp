@@ -70,6 +70,18 @@ void networkTask(void *pvParameters) {
       lastIssPassFetch = millis();
     }
 
+    if (now - lastForecastFetch > 3600000 || lastForecastFetch == 0) { // Every 1h
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchForecast();
+      }
+    }
+
+    if (now - lastRainRadarFetch > 300000 || lastRainRadarFetch == 0) { // Every 5 min
+      if (WiFi.status() == WL_CONNECTED) {
+        fetchRainViewerPath();
+      }
+    }
+
     if (now - lastAqiFetch > 1800000 || lastAqiFetch == 0) { // Every 30 min
       if (WiFi.status() == WL_CONNECTED) {
         fetchAirQuality();
@@ -184,6 +196,7 @@ void setup() {
   pref_show_elec_clock = preferences.getBool("sh_eclock", true);
   pref_show_aqi = preferences.getBool("sh_aqi", true);
   pref_show_crypto = preferences.getBool("sh_crypto", true);
+  pref_show_rain_radar = preferences.getBool("sh_rrain", true);
   pref_crypto_coin = preferences.getString("crypto_coin", "BTCUSDT");
   pref_crypto_period = preferences.getString("crypto_period", "1d");
   
@@ -319,6 +332,7 @@ void nextState() {
     if (currentState == STATE_RADAR && pref_show_radar) enabled = true;
     else if (currentState == STATE_TIME && pref_show_time) enabled = true;
     else if (currentState == STATE_WEATHER && pref_show_weather) enabled = true;
+    else if (currentState == STATE_RAIN_RADAR && pref_show_rain_radar) enabled = true;
     else if (currentState == STATE_MOON && pref_show_moon) {
       enabled = true;
       struct tm timeinfo;
@@ -486,6 +500,13 @@ void loop() {
   } else if (currentState == STATE_WEATHER) {
     if (now - lastDrawTime > 50) {
       drawWeatherUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+  } else if (currentState == STATE_RAIN_RADAR) {
+    if (now - lastDrawTime > 2000) {
+      drawRainRadarUI(&timeinfo);
       spr.pushSprite(0, 0);
       lastDrawTime = now;
     }

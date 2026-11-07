@@ -153,3 +153,12 @@ String crypto_current_price = "";
 String crypto_change_pct = "";
 float crypto_btc_prices[100];
 int crypto_btc_prices_count = 0;
+
+// 3-day forecast
+DayForecast forecast[3] = {};
+unsigned long lastForecastFetch = 0;
+
+// Rain Radar (RainViewer)
+String rainviewer_tile_path = "";
+unsigned long lastRainRadarFetch = 0;
+bool pref_show_rain_radar = true;
