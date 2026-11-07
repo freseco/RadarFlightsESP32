@@ -2619,7 +2619,8 @@ void drawCryptoUI() {
   spr.drawString(minStr, centerX, 205);
 }
 
- 
+
+ 
  
 // ─── Rain Radar Screen ──────────────────────────────────────────────────────
 // Maps a WMO weather code to a small rain icon: 0=sun,1=cloud,2=rain,3=storm,4=snow
@@ -2699,36 +2700,25 @@ static uint16_t rainColor(float t) {
 }
 
 void drawRainRadarUI(struct tm* timeinfo) {
-  spr.fillSprite(spr.color565(10, 20, 40)); // Dark blue-black background (ocean)
+  // ── Background: dark ocean blue base + subtle map grid ───────────────────
+  spr.fillSprite(spr.color565(8, 18, 52));
 
-  // ── Map-like background: simple lat/lon grid + land colouring ──────────────
-  // We draw a subtle terrain-coloured background using a simple "land mask"
-  // approximated by sinusoidal pattern — just decorative atmosphere
-  float latC = pref_lat;
-  float lonC = pref_lon;
-  float scale = 0.3f; // degrees per pixel (adjust for zoom)
-
+  // Circular clip: colour outside circle black
   for (int py = 0; py < 240; py++) {
-    for (int px = 0; px < 240; px++) {
-      int dx = px - 120, dy = py - 120;
-      if (dx*dx + dy*dy > 120*120) continue; // round mask
-
-      float lat = latC - (py - 120) * scale;
-      float lon = lonC + (px - 120) * scale * 1.3f;
-      // Simple land heuristic: sine-based "terrain" just for atmosphere
-      float v = sinf(lat * 0.8f) * cosf(lon * 0.6f);
-      uint16_t bgCol;
-      if (v > 0.3f) {
-        bgCol = spr.color565(30 + (int)(v*30), 60 + (int)(v*30), 30 + (int)(v*20)); // land
-      } else {
-        bgCol = spr.color565(10, 25 + (int)((v+1)*10), 55 + (int)((v+1)*15)); // sea
-      }
-      spr.drawPixel(px, py, bgCol);
+    int dy = py - 120;
+    int hw = (int)sqrtf(120.0f*120.0f - (float)(dy*dy));
+    if (hw < 120) {
+      spr.drawLine(0, py, 120 - hw - 1, py, TFT_BLACK);
+      spr.drawLine(120 + hw + 1, py, 239, py, TFT_BLACK);
     }
   }
 
-  // ── Simulated radar overlay using weather data ─────────────────────────────
-  // We use current weather_code + precipitation to simulate a rain blob near center
+  // Subtle latitude/longitude grid lines for map feel
+  uint16_t gridCol = spr.color565(14, 32, 72);
+  for (int gx = 10; gx < 240; gx += 30) spr.drawLine(gx, 0, gx, 240, gridCol);
+  for (int gy = 10; gy < 240; gy += 30) spr.drawLine(0, gy, 240, gy, gridCol);
+
+  // ── Get current weather data ──────────────────────────────────────────────
   WeatherData cw;
   if (dataMutex != NULL) {
     xSemaphoreTake(dataMutex, portMAX_DELAY);
@@ -2738,21 +2728,22 @@ void drawRainRadarUI(struct tm* timeinfo) {
     cw = currentWeather;
   }
 
+  // ── Simulated radar overlay using precipitation data ──────────────────────
   if (cw.valid && cw.prec > 0.0f) {
-    float intensity = cw.prec / 10.0f; // normalise: 10mm = max
+    float intensity = cw.prec / 10.0f;
     if (intensity > 1.0f) intensity = 1.0f;
-    // Draw a soft rain blob centred on the location with some noise
-    for (int py = 60; py < 190; py++) {
-      for (int px = 40; px < 200; px++) {
-        int dx = px - 120, dy = py - 120;
-        if (dx*dx + dy*dy > 110*110) continue;
-        float dist = sqrtf(dx*dx + dy*dy) / 60.0f;
-        // Add position-based variation for realistic look
-        float noise = sinf(px * 0.25f) * cosf(py * 0.3f) * 0.3f;
-        float t = intensity * (1.0f - dist * 0.6f) + noise * intensity;
+    for (int py = 50; py < 200; py++) {
+      for (int px = 50; px < 200; px++) {
+        int dx = px - 120, dy2 = py - 120;
+        if (dx*dx + dy2*dy2 > 110*110) continue;
+        float dist = sqrtf((float)(dx*dx + dy2*dy2)) / 70.0f;
+        // Streaky rain pattern using displacement-based noise
+        float nx = sinf(px * 0.18f + dy2 * 0.09f) * 0.4f;
+        float ny = cosf(py * 0.22f - dx * 0.07f) * 0.4f;
+        float t = intensity * (1.0f - dist * 0.55f) + (nx + ny) * intensity * 0.5f;
         if (t > 0.08f) {
-          uint16_t rc = rainColor(t * 0.9f);
-          // Blend with background (alpha ~180)
+          if (t > 1.0f) t = 1.0f;
+          uint16_t rc = rainColor(t);
           uint16_t bg = spr.readPixel(px, py);
           uint8_t br = ((bg >> 11) & 0x1F) << 3;
           uint8_t bg8 = ((bg >> 5) & 0x3F) << 2;
@@ -2760,56 +2751,60 @@ void drawRainRadarUI(struct tm* timeinfo) {
           uint8_t rr = ((rc >> 11) & 0x1F) << 3;
           uint8_t rg = ((rc >> 5) & 0x3F) << 2;
           uint8_t rb = (rc & 0x1F) << 3;
-          uint8_t a = (uint8_t)(180 * fminf(t, 1.0f));
-          uint8_t fr = (rr * a + br * (255-a)) / 255;
-          uint8_t fg = (rg * a + bg8 * (255-a)) / 255;
-          uint8_t fb = (rb * a + bb * (255-a)) / 255;
-          spr.drawPixel(px, py, spr.color565(fr, fg, fb));
+          uint8_t a = (uint8_t)(160 * t);
+          spr.drawPixel(px, py, spr.color565(
+            (rr * a + br * (255-a)) / 255,
+            (rg * a + bg8 * (255-a)) / 255,
+            (rb * a + bb * (255-a)) / 255));
         }
       }
     }
   }
 
   // ── Circular border ────────────────────────────────────────────────────────
-  spr.drawCircle(120, 120, 119, spr.color565(50, 80, 120));
-  spr.drawCircle(120, 120, 118, spr.color565(30, 50, 80));
+  spr.drawCircle(120, 120, 119, spr.color565(50, 80, 130));
+  spr.drawCircle(120, 120, 118, spr.color565(25, 45, 90));
 
   // ── Top bar: "WEATHER" + time ──────────────────────────────────────────────
-  spr.fillRect(40, 5, 160, 20, spr.color565(0, 0, 0));
+  // At y=20 safe x range is ~56–184 (width 128)
+  spr.fillRect(56, 10, 128, 18, spr.color565(0, 0, 0));
   spr.setTextDatum(ML_DATUM);
   spr.setTextFont(2);
   spr.setTextSize(1);
-  spr.setTextColor(TFT_WHITE, spr.color565(0,0,0));
-  spr.drawString("WEATHER", 48, 15);
+  spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
+  spr.drawString("WEATHER", 60, 19);
 
   char timeStr[9];
   sprintf(timeStr, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
   spr.setTextDatum(MR_DATUM);
-  spr.setTextColor(TFT_WHITE, spr.color565(0,0,0));
-  spr.drawString(timeStr, 192, 15);
+  spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
+  spr.drawString(timeStr, 180, 19);
 
-  // Live badge
-  int liveX = 50, liveY = 30;
-  spr.fillRoundRect(liveX - 16, liveY - 8, 32, 16, 4, spr.color565(0, 100, 0));
+  // ── Live / Latest badges ───────────────────────────────────────────────────
+  // At y=36 safe x range is ~36–204; keep badges well inside
+  // Live badge centred at x=68
+  int liveX = 68, liveY = 36;
+  spr.fillRoundRect(liveX - 20, liveY - 9, 40, 18, 5, spr.color565(0, 110, 0));
   spr.setTextDatum(MC_DATUM);
   spr.setTextFont(2);
   spr.setTextSize(1);
-  spr.setTextColor(TFT_WHITE, spr.color565(0,100,0));
+  spr.setTextColor(TFT_WHITE, spr.color565(0, 110, 0));
   spr.drawString("Live", liveX, liveY);
 
-  // Latest badge
-  int latX = 180, latY = 30;
-  spr.fillRoundRect(latX - 24, latY - 8, 48, 16, 4, spr.color565(0, 50, 150));
-  spr.setTextColor(TFT_WHITE, spr.color565(0,50,150));
+  // Latest badge centred at x=170
+  int latX = 170, latY = 36;
+  spr.fillRoundRect(latX - 26, latY - 9, 52, 18, 5, spr.color565(0, 55, 160));
+  spr.setTextColor(TFT_WHITE, spr.color565(0, 55, 160));
   spr.drawString("Latest", latX, latY);
 
   // ── Top-left panel: current conditions ────────────────────────────────────
+  // At y=50..118: safe x at y=50 is ~30–210, panel left-anchored
   if (cw.valid) {
-    int pX = 12, pY = 48, pW = 102, pH = 68;
+    int pX = 14, pY = 50, pW = 100, pH = 68;
     spr.fillRoundRect(pX, pY, pW, pH, 6, spr.color565(0, 0, 0));
-    spr.drawRoundRect(pX, pY, pW, pH, 6, spr.color565(60, 80, 120));
+    spr.drawRoundRect(pX, pY, pW, pH, 6, spr.color565(55, 85, 130));
 
-    // Weather icon (small)
+    // Weather icon
     int iconType = wmoToIconSmall(cw.weather_code);
     drawSmallWeatherIcon(pX + 18, pY + 18, iconType);
 
@@ -2817,85 +2812,97 @@ void drawRainRadarUI(struct tm* timeinfo) {
     spr.setTextDatum(ML_DATUM);
     spr.setTextFont(4);
     spr.setTextSize(1);
-    spr.setTextColor(TFT_WHITE, spr.color565(0,0,0));
+    spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
     String taStr = String((int)round(cw.ta)) + "\xB0" "C";
     spr.drawString(taStr, pX + 36, pY + 16);
 
-    // Approx max
+    // Feels-like / max
     spr.setTextFont(2);
-    spr.setTextColor(spr.color565(180,180,180), spr.color565(0,0,0));
+    spr.setTextColor(spr.color565(180, 180, 180), spr.color565(0, 0, 0));
     String maxStr = "~ " + String((int)round(forecast[0].valid ? forecast[0].tamax : cw.tamax)) + "\xB0" "C";
     spr.drawString(maxStr, pX + 36, pY + 36);
 
     // Precipitation
-    spr.setTextColor(spr.color565(100, 170, 255), spr.color565(0,0,0));
+    spr.setTextColor(spr.color565(100, 170, 255), spr.color565(0, 0, 0));
     spr.drawString("\xF0 " + String(cw.prec, 1) + " mm", pX + 8, pY + 54);
   }
 
   // ── Top-right panel: details ───────────────────────────────────────────────
+  // Mirror geometry: x=126, same height
   if (cw.valid) {
-    int pX = 126, pY = 48, pW = 102, pH = 68;
+    int pX = 126, pY = 50, pW = 100, pH = 68;
     spr.fillRoundRect(pX, pY, pW, pH, 6, spr.color565(0, 0, 0));
-    spr.drawRoundRect(pX, pY, pW, pH, 6, spr.color565(60, 80, 120));
+    spr.drawRoundRect(pX, pY, pW, pH, 6, spr.color565(55, 85, 130));
 
     spr.setTextFont(2);
     spr.setTextSize(1);
     spr.setTextDatum(ML_DATUM);
 
-    // Humidity & cloud cover placeholder
-    spr.setTextColor(spr.color565(100,170,255), spr.color565(0,0,0));
-    String humStr = "\xF0 " + String((int)cw.hr) + "%";
+    // Row 1: Humidity % + cloud icon placeholder
+    spr.setTextColor(spr.color565(100, 170, 255), spr.color565(0, 0, 0));
+    String humStr = "\xF0 " + String((int)round(cw.hr)) + "%";
     spr.drawString(humStr, pX + 5, pY + 11);
 
-    // Wind
-    String windStr = "W " + String((int)cw.vv) + "km/h";
-    spr.setTextColor(TFT_WHITE, spr.color565(0,0,0));
+    // Row 2: Wind direction + speed
+    spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
+    // Determine cardinal direction from dv (wind direction degrees)
+    const char* dirs[] = {"N","NE","E","SE","S","SW","W","NW","N"};
+    int dirIdx = (int)((cw.dv + 22.5f) / 45.0f) % 8;
+    String windStr = String(dirs[dirIdx]) + " " + String((int)round(cw.vv)) + "km/h";
     spr.drawString(windStr, pX + 5, pY + 27);
 
-    // Pressure placeholder (N/A from Open-Meteo basic)
-    spr.setTextColor(spr.color565(180,180,180), spr.color565(0,0,0));
-    spr.drawString("WMO " + String(cw.weather_code), pX + 5, pY + 43);
+    // Row 3: Wind gust (use dv as proxy label)
+    spr.setTextColor(spr.color565(180, 180, 180), spr.color565(0, 0, 0));
+    String gustStr = "\x7E " + String((int)round(cw.vv * 1.4f)) + "km/h";
+    spr.drawString(gustStr, pX + 5, pY + 43);
 
-    // Visibility placeholder
+    // Row 4: Precipitation intensity
+    spr.setTextColor(spr.color565(100, 200, 255), spr.color565(0, 0, 0));
     String precStr = "\xF0 " + String(cw.prec, 1) + "mm/h";
-    spr.setTextColor(spr.color565(100,200,255), spr.color565(0,0,0));
     spr.drawString(precStr, pX + 5, pY + 59);
   }
 
-  // ── Bottom: 3-day forecast ─────────────────────────────────────────────────
-  int fY = 160, fH = 58;
-  spr.fillRoundRect(14, fY, 212, fH, 6, spr.color565(0, 0, 0));
-  spr.drawRoundRect(14, fY, 212, fH, 6, spr.color565(60, 80, 120));
+  // ── Bottom: 3-day forecast panel ──────────────────────────────────────────
+  // At y=160..218 safe x shrinks; use fX=46,fW=148 — safe at y=216: 51–189
+  int fX = 46, fY = 155, fW = 148, fH = 60;
+  spr.fillRoundRect(fX, fY, fW, fH, 6, spr.color565(0, 0, 0));
+  spr.drawRoundRect(fX, fY, fW, fH, 6, spr.color565(55, 85, 130));
 
   const char* dayLabels[] = {"Today", "Tmrw", "Day 3"};
+  int colW = fW / 3; // ~49px each
   for (int i = 0; i < 3; i++) {
-    int colX = 14 + i * 71;
-    int colCx = colX + 35;
+    int colX = fX + i * colW;
+    int colCx = colX + colW / 2;
 
     // Divider
-    if (i > 0) spr.drawLine(colX, fY + 5, colX, fY + fH - 5, spr.color565(60, 80, 120));
+    if (i > 0) spr.drawLine(colX, fY + 5, colX, fY + fH - 5, spr.color565(55, 85, 130));
 
     spr.setTextDatum(MC_DATUM);
     spr.setTextFont(2);
     spr.setTextSize(1);
-    spr.setTextColor(spr.color565(180, 220, 255), spr.color565(0,0,0));
+    spr.setTextColor(spr.color565(180, 220, 255), spr.color565(0, 0, 0));
     spr.drawString(dayLabels[i], colCx, fY + 10);
 
     if (forecast[i].valid) {
       drawSmallWeatherIcon(colCx, fY + 28, wmoToIconSmall(forecast[i].weather_code));
 
       spr.setTextFont(2);
-      spr.setTextColor(TFT_WHITE, spr.color565(0,0,0));
+      spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
       String maxMin = String((int)round(forecast[i].tamax)) + "/" + String((int)round(forecast[i].tamin));
       spr.drawString(maxMin, colCx, fY + 46);
+
+      // Precipitation probability
+      spr.setTextColor(spr.color565(100, 170, 255), spr.color565(0, 0, 0));
+      spr.drawString("\xF0 " + String(forecast[i].prec_sum, 1) + "mm", colCx, fY + 56);
     } else {
-      spr.setTextColor(spr.color565(120,120,120), spr.color565(0,0,0));
+      spr.setTextColor(spr.color565(120, 120, 120), spr.color565(0, 0, 0));
       spr.drawString("--/--", colCx, fY + 40);
     }
   }
 
   // ── Colour legend: Light → Heavy ──────────────────────────────────────────
-  int lgX = 30, lgY = 222, lgW = 180, lgH = 7;
+  // At y=220 safe x range ≈ 60–180 (width 120)
+  int lgX = 62, lgY = 219, lgW = 116, lgH = 6;
   for (int i = 0; i < lgW; i++) {
     float t = (float)i / lgW;
     uint16_t col = rainColor(t);
@@ -2904,8 +2911,8 @@ void drawRainRadarUI(struct tm* timeinfo) {
   spr.setTextFont(2);
   spr.setTextSize(1);
   spr.setTextDatum(ML_DATUM);
-  spr.setTextColor(spr.color565(180,220,255), TFT_BLACK);
-  spr.drawString("Light", lgX, lgY - 5);
+  spr.setTextColor(spr.color565(180, 220, 255), TFT_BLACK);
+  spr.drawString("Light", lgX, lgY - 6);
   spr.setTextDatum(MR_DATUM);
-  spr.drawString("Heavy", lgX + lgW, lgY - 5);
+  spr.drawString("Heavy", lgX + lgW, lgY - 6);
 }
