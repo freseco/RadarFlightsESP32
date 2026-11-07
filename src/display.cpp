@@ -2555,6 +2555,129 @@ void drawAirQualityUI() {
   }
 }
 
+// ─── CASIO F-91W SCREEN ────────────────────────────────────────────────────
+// Draws one 7-segment digit/letter. Bits: a=1 b=2 c=4 d=8 e=16 f=32 g=64
+static void casioDrawSegs(int x, int y, int w, int h, int t, uint8_t segs, uint16_t color) {
+  int hh = (h - 3 * t) / 2;
+  if (segs & 0x01) spr.fillRect(x + t + 1, y, w - 2 * t - 2, t, color);                 // a
+  if (segs & 0x02) spr.fillRect(x + w - t, y + t + 1, t, hh - 2, color);                // b
+  if (segs & 0x04) spr.fillRect(x + w - t, y + 2 * t + hh + 1, t, hh - 2, color);       // c
+  if (segs & 0x08) spr.fillRect(x + t + 1, y + h - t, w - 2 * t - 2, t, color);         // d
+  if (segs & 0x10) spr.fillRect(x, y + 2 * t + hh + 1, t, hh - 2, color);               // e
+  if (segs & 0x20) spr.fillRect(x, y + t + 1, t, hh - 2, color);                        // f
+  if (segs & 0x40) spr.fillRect(x + t + 1, y + t + hh, w - 2 * t - 2, t, color);        // g
+}
+
+static void casioDrawDigit(int x, int y, int w, int h, int t, int digit, uint16_t color) {
+  static const uint8_t digitSegs[10] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111};
+  if (digit < 0 || digit > 9) return;
+  casioDrawSegs(x, y, w, h, t, digitSegs[digit], color);
+}
+
+void drawCasioUI(struct tm* timeinfo) {
+  // Weekday letters as 7-segment patterns (SU MO TU WE TH FR SA)
+  static const uint8_t dayL1[7] = {109, 55, 120, 62, 120, 113, 109};
+  static const uint8_t dayL2[7] = {62, 63, 62, 121, 118, 80, 119};
+
+  int hour24 = timeinfo->tm_hour;
+  int minute = timeinfo->tm_min;
+  int second = timeinfo->tm_sec;
+  int wday   = constrain(timeinfo->tm_wday, 0, 6);
+  int mday   = timeinfo->tm_mday;
+  bool isPM  = hour24 >= 12;
+  int hour12 = hour24 % 12;
+  if (hour12 == 0) hour12 = 12;
+
+  uint16_t white = spr.color565(235, 235, 235);
+  uint16_t red   = spr.color565(215, 25, 25);
+  uint16_t blue  = spr.color565(25, 75, 165);
+  uint16_t lcd   = spr.color565(178, 190, 172);
+  uint16_t ink   = spr.color565(25, 25, 25);
+  uint16_t plate = spr.color565(20, 20, 20);
+
+  spr.fillSprite(TFT_BLACK);
+  spr.setTextSize(1);
+
+  // ── Header: CASIO  F-91W ──
+  spr.setTextColor(white, TFT_BLACK);
+  spr.setTextFont(4);
+  spr.setTextDatum(MC_DATUM);
+  spr.drawString("CASIO", 100, 32);
+  spr.setTextFont(2);
+  spr.setTextDatum(ML_DATUM);
+  spr.drawString("F-91W", 146, 34);
+
+  // ── ALARM CHRONOGRAPH + LIGHT ──
+  spr.setTextFont(1);
+  spr.setTextDatum(MC_DATUM);
+  spr.drawString("ALARM CHRONOGRAPH", 120, 56);
+  spr.fillTriangle(22, 56, 28, 53, 28, 59, red);
+  spr.setTextDatum(ML_DATUM);
+  spr.drawString("LIGHT", 32, 56);
+
+  // ── Blue frame + LCD ──
+  spr.fillRoundRect(26, 66, 188, 114, 8, blue);
+  spr.fillRoundRect(32, 72, 176, 102, 4, lcd);
+
+  // Top row: PM, alarm bell, SU, 30
+  spr.setTextFont(1);
+  spr.setTextColor(ink, lcd);
+  spr.setTextDatum(ML_DATUM);
+  if (isPM) {
+    spr.drawString("PM", 40, 86);
+    spr.drawString("PM", 41, 86);
+  }
+
+  // Bell icon
+  spr.fillTriangle(70, 80, 65, 90, 75, 90, ink);
+  spr.fillRect(64, 90, 12, 2, ink);
+  spr.fillRect(69, 93, 3, 2, ink);
+
+  // Weekday (two letters)
+  casioDrawSegs(86, 78, 16, 26, 4, dayL1[wday], ink);
+  casioDrawSegs(108, 78, 16, 26, 4, dayL2[wday], ink);
+  // Day of month (leading zero blanked)
+  if (mday >= 10) casioDrawDigit(150, 78, 16, 26, 4, mday / 10, ink);
+  casioDrawDigit(172, 78, 16, 26, 4, mday % 10, ink);
+
+  // Main time HH:MM (12-hour, leading zero blanked)
+  if (hour12 >= 10) casioDrawDigit(40, 110, 24, 54, 6, hour12 / 10, ink);
+  casioDrawDigit(68, 110, 24, 54, 6, hour12 % 10, ink);
+  if (second % 2 == 0) {              // blinking colon
+    spr.fillRect(96, 125, 6, 6, ink);
+    spr.fillRect(96, 143, 6, 6, ink);
+  }
+  casioDrawDigit(106, 110, 24, 54, 6, minute / 10, ink);
+  casioDrawDigit(134, 110, 24, 54, 6, minute % 10, ink);
+
+  // Seconds (smaller, aligned to the bottom)
+  casioDrawDigit(164, 126, 16, 38, 4, second / 10, ink);
+  casioDrawDigit(184, 126, 16, 38, 4, second % 10, ink);
+
+  // ── MODE + ALARM ON-OFF/24HR ──
+  spr.setTextFont(1);
+  spr.setTextColor(white, TFT_BLACK);
+  spr.fillTriangle(22, 190, 28, 187, 28, 193, red);
+  spr.setTextDatum(ML_DATUM);
+  spr.drawString("MODE", 32, 190);
+  spr.setTextDatum(MC_DATUM);
+  spr.drawString("ALARM ON-OFF/24HR", 120, 190);
+
+  // ── WATER [WR] RESIST ──
+  spr.setTextDatum(ML_DATUM);
+  spr.drawString("WATER", 60, 210);
+  spr.setTextDatum(MR_DATUM);
+  spr.drawString("RESIST", 180, 210);
+
+  spr.fillRoundRect(98, 200, 44, 20, 4, plate);
+  spr.drawRoundRect(98, 200, 44, 20, 4, red);
+  spr.setTextFont(2);
+  spr.setTextColor(red, plate);
+  spr.setTextDatum(MC_DATUM);
+  spr.drawString("WR", 120, 210);
+  spr.drawString("WR", 121, 210);   // faux bold
+}
+
 void drawCryptoUI() {
   spr.fillSprite(TFT_BLACK);
   

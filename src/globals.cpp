@@ -145,6 +145,7 @@ unsigned long lastAqiFetch = 0;
 String pref_aqicn_token = "996e5fe6b7adda4ed8bb3a401f9ffd95b452d294";
 
 bool pref_show_crypto = true;
+bool pref_show_casio = true;
 String pref_crypto_coin = "BTCUSDT";
 String pref_crypto_period = "1d";
 float crypto_prices[100] = {0};

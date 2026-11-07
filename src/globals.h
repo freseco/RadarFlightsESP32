@@ -77,6 +77,7 @@ enum DisplayState {
   STATE_ELEC_CLOCK,
   STATE_AIR_QUALITY,
   STATE_CRYPTO,
+  STATE_CASIO,
   STATE_MAX
 };
 extern DisplayState currentState;
@@ -111,6 +112,7 @@ extern bool pref_show_electricity;
 extern bool pref_show_elec_clock;
 extern bool pref_show_aqi;
 extern bool pref_show_crypto;
+extern bool pref_show_casio;
 extern bool pref_show_rain_radar;
 extern String pref_crypto_coin;
 extern String pref_crypto_period;

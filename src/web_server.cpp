@@ -178,6 +178,7 @@ const char* htmlForm = R"=====(
         <div class="chk-container"><input type='checkbox' name='sh_aqi' value='1' %CHK_AQI%> 🌬️ Calidad del Aire (AQI)</div>
         <div class="chk-container"><input type='checkbox' name='sh_crypto' value='1' %CHK_CRYPTO%> 📈 Gráfica Criptomonedas (Coinbase)</div>
         <div class="chk-container"><input type='checkbox' name='sh_rrain' value='1' %CHK_RRAIN%> 🌧️ Radar de Lluvia</div>
+        <div class="chk-container"><input type='checkbox' name='sh_casio' value='1' %CHK_CASIO%> ⌚ Casio F-91W</div>
       </div>
       <label>💰 Criptomoneda (Coinbase EUR):</label>
       <select name='crypto_coin'>
@@ -637,6 +638,7 @@ void handleRoot() {
   html.replace("%CHK_AQI%", pref_show_aqi ? "checked" : "");
   html.replace("%CHK_CRYPTO%", pref_show_crypto ? "checked" : "");
   html.replace("%CHK_RRAIN%", pref_show_rain_radar ? "checked" : "");
+  html.replace("%CHK_CASIO%", pref_show_casio ? "checked" : "");
   
   // Crypto setup
   html.replace("%CRYPTO_" + pref_crypto_coin + "%", "selected");
@@ -738,6 +740,7 @@ void handleSave() {
   pref_show_aqi = server.hasArg("sh_aqi");
   pref_show_crypto = server.hasArg("sh_crypto");
   pref_show_rain_radar = server.hasArg("sh_rrain");
+  pref_show_casio = server.hasArg("sh_casio");
 
   preferences.putBool("sh_radar", pref_show_radar);
   preferences.putBool("sh_time", pref_show_time);
@@ -753,6 +756,7 @@ void handleSave() {
   preferences.putBool("sh_aqi", pref_show_aqi);
   preferences.putBool("sh_crypto", pref_show_crypto);
   preferences.putBool("sh_rrain", pref_show_rain_radar);
+  preferences.putBool("sh_casio", pref_show_casio);
   
   if (server.hasArg("crypto_coin")) {
     preferences.putString("crypto_coin", server.arg("crypto_coin"));
@@ -850,6 +854,7 @@ void handleSave() {
   else if (currentState == STATE_ELECTRICITY && pref_show_electricity && electricity_valid) currentEnabled = true;
   else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock && electricity_valid) currentEnabled = true;
   else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) currentEnabled = true;
+  else if (currentState == STATE_CASIO && pref_show_casio) currentEnabled = true;
   
   if (!currentEnabled) {
     int prev = (int)currentState - 1;

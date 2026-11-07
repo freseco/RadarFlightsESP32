@@ -31,12 +31,20 @@ RadarFlightsESP32 es un proyecto de código abierto para dispositivos **ESP32** 
     - Digital.
     - Analógico 12 Horas.
     - Analógico 24 Horas (con borde iluminado en las horas de sol y aguja de 24h).
+    - ⌚ **Casio F-91W**: Reproducción digital retro del mítico reloj Casio con dígitos de 7 segmentos, día de la semana, fecha e indicadores.
   - 🌤️ **El Tiempo**: Datos meteorológicos actualizados a través de la API abierta de Open-Meteo (automático, no requiere clave). Muestra temperaturas actual, máxima y mínima, y cuenta con una brújula indicando la dirección del viento.
-  - 🍃 **Calidad del Aire (AQI)**: Monitoreo en tiempo real del índice de calidad del aire (AQI) de la estación más cercana (mediante API de WAQI), indicando el nivel de contaminación y sus componentes.
+  - 🌧️ **Radar de Lluvia (Doppler)**: Mapa geográfico dinámico ajustado a las coordenadas locales (ríos y poblaciones cercanas), ecos Doppler en tiempo real, previsión de lluvia a 3 días con probabilidad de precipitación, rachas de viento, presión barométrica y visibilidad.
+  - 🍃 **Calidad del Aire (AQI)**: Monitoreo en tiempo real del índice de calidad del aire (AQI) de la estación más cercana (mediante API de WAQI), con arcos de escala, nivel de contaminación y tarjetas individuales para contaminantes (PM2.5, PM10, O3, NO2).
+  - ⚡ **Precios de la Electricidad (PVPC)**:
+    - Gráfica de 24 horas con curvas y precios en €/kWh.
+    - Reloj de 24 horas con anillo perimetral cromático según franjas horarias baratas y caras.
+    - Omisión automática inteligente: si no se obtienen datos válidos de la red, las pantallas se ocultan automáticamente del carrusel.
+  - 📈 **Criptomonedas (Coinbase)**: Cotización y gráfica de velas/línea temporal (1d, 1w, 1m, 1y) para múltiples criptomonedas (BTC, ETH, SOL, XRP, etc.) con curva comparativa de referencia frente a Bitcoin.
   - 🌑 **Fase Lunar**: Indicador de la fase lunar actual en la bóveda celeste. Incluye una apertura clásica de reloj mecánico en el reloj analógico, animaciones dinámicas de estrellas fugaces y un transbordador espacial.
   - ✈️ **Horizonte Artificial**: Indicador de actitud con animación dinámica que muestra los datos del avión más cercano (Altitud, Velocidad, Rumbo).
   - 🛰️ **ISS Tracker**: Mapa mundial con la posición en tiempo real de la Estación Espacial Internacional (ISS) y tu ubicación. Incluye un sistema de predicción visual que te avisa cuándo será visible a simple vista desde tu posición (vía n2yo.com).
   - ☀️ **Reloj Astronómico**: Representación gráfica en un círculo de 24h de la posición en el cielo del Sol y la Luna utilizando trigonometría. Incluye el ángulo solar con respecto al horizonte, su hora del cénit y ejes de referencia visual.
+  - 🌌 **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual con estrellas titilantes y estrellas fugaces.
 * **Portal Cautivo de Configuración**: No hay que modificar el código para cambiar las credenciales de WiFi o la ubicación. Si no detecta WiFi, levanta su propio punto de acceso (Access Point) llamado `ESP32-Radar` para configuración remota desde el móvil o navegador.
 * **Notificaciones LED RGB**: (Para placas como ESP32-S3-Zero). El LED te avisa de eventos importantes: Parpadeo Amarillo (La ISS está pasando por encima de ti), Rojo fijo (Nuevo avión en el radar) y Verde fijo (Avión ha aterrizado o salido de rango).
 * **Auto-Localización**: Capacidad de ubicarte automáticamente según tu dirección IP para ajustar el radar.
@@ -128,14 +136,21 @@ El dispositivo va ciclando entre diferentes pantallas de forma automática, aunq
    - **Digital**: Reloj estándar en formato HH:MM.
    - **Analógico 12h**: Esfera clásica con manecillas de horas, minutos y segundos. Cuenta con apertura estilo reloj mecánico para la fase lunar.
    - **Analógico 24h**: Esfera especial de 24 horas con borde iluminado en amarillo durante las horas de luz solar. Incluye animaciones ambientales inmersivas: pájaros aleteando en la zona diurna, un cielo estrellado dinámico con estrellas fugaces en la zona nocturna, y un icono en la zona diurna que cambia en tiempo real (sol, nubes o lluvia) según el clima actual.
+   - **Casio F-91W**: Réplica estética retro del clásico reloj digital con dígitos de 7 segmentos de alta definición, indicación PM, campana de alarma, día de la semana y fecha.
    *Nota: Puedes configurar desde el portal web si quieres que los distintos relojes alternen o fijar uno específico.*
 3. **El Tiempo (Open-Meteo)**: Pantalla de información meteorológica con la temperatura actual, máxima y mínima, humedad, y viento extraída directamente de Open-Meteo.
-4. **Calidad del Aire (AQI)**: Visualización colorida del índice de calidad del aire actual, mostrando contaminantes (PM2.5, PM10, Ozono) y la estación de medición.
-5. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar.
-6. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
-7. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
-7. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche. Se representa visualmente el horizonte, el rayo solar con su ángulo, y la información del cénit.
-8. **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual. Incluye un cielo animado con estrellas de fondo que titilan y estrellas fugaces que cruzan la pantalla esporádicamente.
+4. **Radar de Lluvia y Clima Doppler**: Mapa de radar meteorológico en tiempo real centrado en tus coordenadas geográficas (con ríos y pueblos locales), ecos Doppler de precipitación, previsión a 3 días con probabilidad de lluvia, rachas de viento, presión barométrica y visibilidad.
+5. **Calidad del Aire (AQI)**: Visualización colorida del índice de calidad del aire actual mediante escala de arcos, nivel de contaminación y tarjetas individuales para contaminantes (PM2.5, PM10, Ozono O3 y Dióxido de Nitrógeno NO2).
+6. **Precios de la Electricidad (PVPC)**:
+   - **Gráfica de Curva 24h**: Representa los precios del kWh hora a hora del día actual en España.
+   - **Reloj Eléctrico 24h**: Reloj con anillo cromático perimetral que muestra las horas más caras y más baratas en verde, amarillo y rojo.
+   - *Nota: Si no hay datos disponibles de la API de Red Eléctrica, estas pantallas se omiten automáticamente del carrusel.*
+7. **Criptomonedas (Coinbase)**: Gráfica de cotización en tiempo real e histórico (1d, 1w, 1m, 1y) de la moneda seleccionada (BTC, ETH, SOL, etc.) junto con la curva de referencia de Bitcoin (línea punteada naranja) y valores Min/Max.
+8. **Fase Lunar**: Muestra gráficamente la luna con su fase actual y porcentaje de visibilidad, iluminada acorde a los días del ciclo lunar.
+9. **Horizonte Artificial**: Pantalla inspirada en la aviónica que muestra los datos del avión más cercano de forma inmersiva, con etiquetas dinámicas y movimiento.
+10. **ISS Tracker**: Rastreador de la Estación Espacial Internacional sobre un mapa mundial. Si se configura la API Key de n2yo, muestra una cuenta atrás para el próximo paso visible desde tu ubicación, con su duración y elevación máxima. Cuando la ISS está pasando, el LED parpadea en amarillo.
+11. **Reloj Astronómico**: Círculo inmersivo de 24 horas que dibuja la posición exacta en el cielo del Sol y la Luna (calculada mediante las fases lunares) marcando las zonas de día y de noche. Se representa visualmente el horizonte, el rayo solar con su ángulo, y la información del cénit.
+12. **Constelación (Zodíaco)**: Pantalla astronómica que dibuja la constelación del zodíaco correspondiente a la fecha actual. Incluye un cielo animado con estrellas de fondo que titilan y estrellas fugaces que cruzan la pantalla esporádicamente.
 
 ---
 

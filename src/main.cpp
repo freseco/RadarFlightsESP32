@@ -200,6 +200,7 @@ void setup() {
   pref_show_elec_clock = preferences.getBool("sh_eclock", true);
   pref_show_aqi = preferences.getBool("sh_aqi", true);
   pref_show_crypto = preferences.getBool("sh_crypto", true);
+  pref_show_casio = preferences.getBool("sh_casio", true);
   pref_show_rain_radar = preferences.getBool("sh_rrain", true);
   pref_crypto_coin = preferences.getString("crypto_coin", "BTCUSDT");
   pref_crypto_period = preferences.getString("crypto_period", "1d");
@@ -360,6 +361,7 @@ void nextState() {
     else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock && electricity_valid) enabled = true;
     else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) enabled = true;
     else if (currentState == STATE_CRYPTO && pref_show_crypto) enabled = true;
+    else if (currentState == STATE_CASIO && pref_show_casio) enabled = true;
     
     if (enabled) {
       if (currentState == STATE_TIME) {
@@ -586,6 +588,14 @@ void loop() {
       lastDrawTime = now;
     }
     return;
+  } else if (currentState == STATE_CASIO) {
+    if (now - lastDrawTime > 250) {
+      drawCasioUI(&timeinfo);
+      spr.pushSprite(0, 0);
+      lastDrawTime = now;
+    }
+    return;
+
   }
 
   

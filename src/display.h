@@ -21,6 +21,7 @@ void drawElectricityUI(struct tm* timeinfo);
 void drawElecClockUI(struct tm* timeinfo);
 void drawAirQualityUI();
 void drawCryptoUI();
+void drawCasioUI(struct tm* timeinfo);
 void drawRainRadarUI(struct tm* timeinfo);
 
 void drawGhostPlane();
