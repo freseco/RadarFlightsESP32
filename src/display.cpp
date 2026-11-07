@@ -2559,9 +2559,13 @@ void drawCryptoUI() {
   spr.fillSprite(TFT_BLACK);
   
   if (crypto_prices_count == 0) {
-    spr.setTextColor(TFT_WHITE, TFT_BLACK);
     spr.setTextDatum(MC_DATUM);
-    spr.drawString("Sin datos / Cargando...", centerX, centerY);
+    spr.setTextFont(2);
+    spr.setTextColor(spr.color565(180, 205, 235));
+    spr.drawString(pref_crypto_coin + " (" + pref_crypto_period + ")", centerX, 30);
+    spr.setTextFont(1);
+    spr.setTextColor(spr.color565(120, 140, 160));
+    spr.drawString(tr("Cargando precios...", "Loading prices..."), centerX, centerY);
     return;
   }
   
@@ -2578,32 +2582,43 @@ void drawCryptoUI() {
     minP -= 1.0f;
   }
   
-  int chartX = 20;
-  int chartY = 70;
-  int chartW = 200;
-  int chartH = 100;
+  // ── 1. Top Title (Safe margin below round bezel) ──────────────────────────
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(2);
+  spr.setTextColor(spr.color565(170, 200, 235));
+  String periodStr = pref_crypto_period;
+  periodStr.toUpperCase();
+  spr.drawString(pref_crypto_coin + "  *  " + periodStr, centerX, 26);
   
-  // Draw Title
-  spr.setTextColor(TFT_WHITE, TFT_BLACK);
-  spr.setTextDatum(TC_DATUM);
-  spr.setTextSize(2);
-  spr.drawString(pref_crypto_coin + " (" + pref_crypto_period + ")", centerX, 10);
+  // ── 2. Current Price (Properly proportioned font, zero bezel clipping) ─────
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(4);
+  // If price string is long (e.g. many decimals), fall back to font 2 to guarantee safety
+  if (spr.textWidth(crypto_current_price) > 150) {
+    spr.setTextFont(2);
+  }
+  spr.setTextColor(TFT_WHITE);
+  spr.drawString(crypto_current_price, centerX, 48);
   
-  // Draw Price
-  spr.setTextSize(3);
-  spr.drawString(crypto_current_price, centerX, 30);
+  // ── 3. Chart Dimensions & Background Panel ────────────────────────────────
+  int chartX = 32;
+  int chartY = 66;
+  int chartW = 176;
+  int chartH = 76;
   
-  // Draw % change
-  spr.setTextSize(2);
-  if (crypto_change_pct.startsWith("+")) spr.setTextColor(TFT_GREEN, TFT_BLACK);
-  else if (crypto_change_pct.startsWith("-")) spr.setTextColor(TFT_RED, TFT_BLACK);
-  else spr.setTextColor(TFT_WHITE, TFT_BLACK);
-  spr.drawString(crypto_change_pct, centerX, 180);
+  // Subtle rounded panel with border
+  spr.fillRoundRect(chartX - 2, chartY - 2, chartW + 4, chartH + 4, 4, spr.color565(10, 15, 22));
+  spr.drawRoundRect(chartX - 2, chartY - 2, chartW + 4, chartH + 4, 4, spr.color565(32, 45, 62));
   
-  // Draw chart frame
-  spr.drawRect(chartX - 1, chartY - 1, chartW + 2, chartH + 2, spr.color565(50, 50, 50));
+  // Subtle horizontal grid guides at 25%, 50%, 75%
+  for (int gy = 1; gy <= 3; gy++) {
+    int yGrid = chartY + (chartH * gy) / 4;
+    for (int gx = chartX + 4; gx < chartX + chartW - 4; gx += 8) {
+      spr.drawPixel(gx, yGrid, spr.color565(22, 30, 42));
+    }
+  }
   
-  // Draw BTC line (dotted, orange) if data exists
+  // ── 4. BTC Benchmark Line (Dotted Orange) ─────────────────────────────────
   if (crypto_btc_prices_count > 1) {
     float btcMinP = crypto_btc_prices[0];
     float btcMaxP = crypto_btc_prices[0];
@@ -2615,22 +2630,22 @@ void drawCryptoUI() {
     
     int prevBtcX = -1;
     int prevBtcY = -1;
-    uint16_t btcColor = spr.color565(255, 165, 0); // Orange
+    uint16_t btcColor = spr.color565(255, 160, 20); // Warm Orange
     
     for (int i = 0; i < crypto_btc_prices_count; i++) {
       int x = chartX + (i * chartW) / (crypto_btc_prices_count - 1 > 0 ? crypto_btc_prices_count - 1 : 1);
-      int y = chartY + chartH - ((crypto_btc_prices[i] - btcMinP) / (btcMaxP - btcMinP) * chartH);
+      int y = chartY + chartH - ((crypto_btc_prices[i] - btcMinP) / (btcMaxP - btcMinP) * (chartH - 4)) - 2;
+      y = constrain(y, chartY + 1, chartY + chartH - 1);
       
       if (prevBtcX != -1) {
-        // Draw dotted line
         float dist = sqrt(pow(x - prevBtcX, 2) + pow(y - prevBtcY, 2));
-        int steps = max(1, (int)(dist / 3)); // Dot every ~3 pixels
+        int steps = max(1, (int)(dist / 3));
         for (int j = 0; j <= steps; j++) {
-          if (j % 2 == 0) { // Only draw half the dots
+          if (j % 2 == 0) {
             int px = prevBtcX + (x - prevBtcX) * j / steps;
             int py = prevBtcY + (y - prevBtcY) * j / steps;
             spr.drawPixel(px, py, btcColor);
-            spr.drawPixel(px, py + 1, btcColor); // Slightly thicker
+            spr.drawPixel(px, py + 1, btcColor);
           }
         }
       }
@@ -2639,35 +2654,71 @@ void drawCryptoUI() {
     }
   }
 
-  // Draw selected coin line
+  // ── 5. Selected Coin Line (Solid Green / Red with Glow) ────────────────────
   int prevX = -1;
   int prevY = -1;
-  uint16_t color = crypto_change_pct.startsWith("+") ? TFT_GREEN : (crypto_change_pct.startsWith("-") ? TFT_RED : TFT_WHITE);
+  uint16_t coinColor = crypto_change_pct.startsWith("+") ? spr.color565(0, 230, 110) : (crypto_change_pct.startsWith("-") ? spr.color565(255, 60, 70) : TFT_WHITE);
   
   for (int i = 0; i < crypto_prices_count; i++) {
     int x = chartX + (i * chartW) / (crypto_prices_count - 1 > 0 ? crypto_prices_count - 1 : 1);
-    int y = chartY + chartH - ((crypto_prices[i] - minP) / (maxP - minP) * chartH);
+    int y = chartY + chartH - ((crypto_prices[i] - minP) / (maxP - minP) * (chartH - 6)) - 3;
+    y = constrain(y, chartY + 1, chartY + chartH - 1);
     
     if (prevX != -1) {
-      spr.drawLine(prevX, prevY, x, y, color);
-      spr.drawLine(prevX, prevY + 1, x, y + 1, color); // thicker line
+      spr.drawLine(prevX, prevY, x, y, coinColor);
+      spr.drawLine(prevX, prevY + 1, x, y + 1, coinColor);
     }
     prevX = x;
     prevY = y;
   }
   
-  // Draw min value
-  spr.setTextDatum(TC_DATUM);
-  spr.setTextSize(2);
-  spr.setTextColor(spr.color565(150, 150, 150), TFT_BLACK);
-  String minStr = "Min: " + String(minP, minP >= 1000 ? 0 : (minP >= 1 ? 2 : 4));
-  spr.drawString(minStr, centerX, 205);
+  // ── 6. Percentage Change Badge ────────────────────────────────────────────
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(2);
+  
+  int badgeW = spr.textWidth(crypto_change_pct) + 16;
+  int badgeH = 18;
+  int badgeY = 158;
+  
+  uint16_t badgeBg, badgeBorder, badgeText;
+  if (crypto_change_pct.startsWith("+")) {
+    badgeBg = spr.color565(10, 32, 18);
+    badgeBorder = spr.color565(0, 180, 80);
+    badgeText = spr.color565(40, 240, 110);
+  } else if (crypto_change_pct.startsWith("-")) {
+    badgeBg = spr.color565(32, 12, 14);
+    badgeBorder = spr.color565(200, 40, 50);
+    badgeText = spr.color565(255, 80, 90);
+  } else {
+    badgeBg = spr.color565(18, 24, 32);
+    badgeBorder = spr.color565(60, 80, 105);
+    badgeText = TFT_WHITE;
+  }
+  
+  spr.fillRoundRect(centerX - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4, badgeBg);
+  spr.drawRoundRect(centerX - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4, badgeBorder);
+  spr.setTextColor(badgeText);
+  spr.drawString(crypto_change_pct, centerX, badgeY);
+  
+  // ── 7. Min and Max Stats Row (Clear of bottom bezel) ───────────────────────
+  auto fmtP = [](float p) -> String {
+    if (p >= 1000.0f) return String((int)round(p));
+    if (p >= 1.0f) return String(p, 2);
+    if (p >= 0.01f) return String(p, 4);
+    return String(p, 5);
+  };
+  
+  spr.setTextFont(1);
+  spr.setTextColor(spr.color565(140, 165, 195));
+  String minStr = "Min " + fmtP(minP);
+  String maxStr = "Max " + fmtP(maxP);
+  
+  spr.setTextDatum(MR_DATUM);
+  spr.drawString(minStr, centerX - 10, 182);
+  
+  spr.setTextDatum(ML_DATUM);
+  spr.drawString(maxStr, centerX + 10, 182);
 }
-
-
-
-
-
 
 // ─── Rain Radar Screen ──────────────────────────────────────────────────────
 static int wmoToIconSmall(int code) {
