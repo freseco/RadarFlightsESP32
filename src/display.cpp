@@ -2387,21 +2387,21 @@ void drawElecClockUI(struct tm* timeinfo) {
 
 // Returns AQI color matching AQICN standard palette
 static uint16_t getAqiColor(int aqi) {
-  if (aqi <= 50)  return spr.color565(0,   153,  102);
-  if (aqi <= 100) return spr.color565(255, 220,  50);
-  if (aqi <= 150) return spr.color565(255, 153,  50);
-  if (aqi <= 200) return spr.color565(200,  0,   50);
-  if (aqi <= 300) return spr.color565(100,  0,  153);
-  return spr.color565(126,  0,   35);
+  if (aqi <= 50)  return spr.color565(0,   215, 120); // Vibrant Emerald Green
+  if (aqi <= 100) return spr.color565(255, 220,  40); // Bright Yellow
+  if (aqi <= 150) return spr.color565(255, 140,  30); // Warm Orange
+  if (aqi <= 200) return spr.color565(235,  40,  50); // Coral Red
+  if (aqi <= 300) return spr.color565(165,  45, 225); // Violet Purple
+  return spr.color565(160,  35,  55);                 // Deep Maroon
 }
 
-static const char* getAqiLabel(int aqi) {
-  if (aqi <= 50)  return "BUENO";
-  if (aqi <= 100) return "MODERADO";
-  if (aqi <= 150) return "SENSIBLES";
-  if (aqi <= 200) return "MALO";
-  if (aqi <= 300) return "MUY MALO";
-  return "PELIGROSO";
+static String getAqiLabel(int aqi) {
+  if (aqi <= 50)  return tr("BUENO", "GOOD");
+  if (aqi <= 100) return tr("MODERADO", "MODERATE");
+  if (aqi <= 150) return tr("SENSIBLE", "SENSITIVE");
+  if (aqi <= 200) return tr("INSALUBRE", "UNHEALTHY");
+  if (aqi <= 300) return tr("MUY MALO", "VERY POOR");
+  return tr("PELIGROSO", "HAZARDOUS");
 }
 
 void drawAirQualityUI() {
@@ -2409,105 +2409,157 @@ void drawAirQualityUI() {
   spr.setTextDatum(MC_DATUM);
 
   if (!currentAQI.valid) {
-    spr.fillCircle(centerX, centerY, radarRadius, spr.color565(20, 20, 30));
-    spr.drawCircle(centerX, centerY, radarRadius, spr.color565(60, 60, 80));
-    spr.setTextColor(spr.color565(180, 180, 180));
+    spr.fillCircle(centerX, centerY, radarRadius - 2, spr.color565(12, 16, 24));
+    spr.drawCircle(centerX, centerY, radarRadius - 2, spr.color565(40, 55, 75));
+    spr.setTextColor(spr.color565(180, 205, 235));
     spr.setTextFont(2);
-    spr.setTextSize(1);
-    spr.drawString(tr("Calidad del Aire", "Air Quality"), centerX, centerY - 20);
-    spr.setTextColor(spr.color565(120, 120, 120));
+    spr.drawString(tr("Calidad del Aire", "Air Quality"), centerX, centerY - 15);
+    spr.setTextColor(spr.color565(130, 150, 175));
     spr.setTextFont(1);
-    spr.drawString(tr("Obteniendo datos...", "Fetching data..."), centerX, centerY + 10);
+    spr.drawString(tr("Obteniendo datos...", "Fetching data..."), centerX, centerY + 12);
     return;
   }
 
   int aqi = currentAQI.aqi;
   uint16_t aqiColor = getAqiColor(aqi);
-  uint16_t bgColor  = spr.color565(10, 10, 15);
+  uint16_t bgColor  = spr.color565(8, 12, 18);
 
-  spr.fillCircle(centerX, centerY, radarRadius, bgColor);
+  // Clean dark circular background
+  spr.fillCircle(centerX, centerY, radarRadius - 2, bgColor);
 
-  // Arcos de progreso en ambos laterales (0-300 AQI → 0-135° por lado)
-  int arcAqi   = aqi > 300 ? 300 : aqi;
-  int arcDeg   = (int)((arcAqi / 300.0f) * 135);
-  
-  // Background arc tracks (derecha e izquierda)
-  spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-              30, 165, spr.color565(40, 40, 50), bgColor, false); // Right track
-  spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-              195, 330, spr.color565(40, 40, 50), bgColor, false); // Left track
-              
-  // Colored progress
+  // ── 1. Gauge Arc Tracks (Left & Right Symmetric) ──────────────────────────
+  // TFT_eSPI drawArc starts at 6 o'clock (0°/360°) and sweeps clockwise:
+  //   Angle 0°   = 6 o'clock (bottom)
+  //   Angle 90°  = 9 o'clock (left)
+  //   Angle 180° = 12 o'clock (top)
+  //   Angle 270° = 3 o'clock (right)
+  // Top gap (145° to 215°, 70° span) accommodates header clear of bezel.
+  // Bottom gap (335° to 25°, 50° span) accommodates station name clear of bezel.
+  // Left track:  25° -> 145° (120° span, sweeps upward along left)
+  // Right track: 215° -> 335° (120° span, fills from 335° upward along right)
+  int arcR_out = 114;
+  int arcR_in  = 108;
+  uint16_t trackColor = spr.color565(25, 36, 50);
+
+  // Background arc tracks
+  spr.drawArc(centerX, centerY, arcR_out, arcR_in, 25, 145, trackColor, bgColor, false);
+  spr.drawArc(centerX, centerY, arcR_out, arcR_in, 215, 335, trackColor, bgColor, false);
+
+  // Progress fill (0-300 AQI -> 0-120°)
+  int arcAqi = aqi > 300 ? 300 : aqi;
+  int arcDeg = (int)((arcAqi / 300.0f) * 120);
+
   if (arcDeg > 0) {
-    // Lado derecho (crece desde abajo hacia arriba)
-    spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-                165 - arcDeg, 165, aqiColor, bgColor, false);
-    // Lado izquierdo (crece desde abajo hacia arriba)
-    spr.drawArc(centerX, centerY, radarRadius - 2, radarRadius - 10,
-                195, 195 + arcDeg, aqiColor, bgColor, false);
+    // Left side grows from bottom (25°) upwards
+    spr.drawArc(centerX, centerY, arcR_out, arcR_in, 25, 25 + arcDeg, aqiColor, bgColor, false);
+    // Right side grows from bottom (335°) upwards
+    spr.drawArc(centerX, centerY, arcR_out, arcR_in, 335 - arcDeg, 335, aqiColor, bgColor, false);
   }
 
-  // Border
-  spr.drawCircle(centerX, centerY, radarRadius,     aqiColor);
-  spr.drawCircle(centerX, centerY, radarRadius - 1, aqiColor);
+  // ── 2. Top Title (Safe margin below round bezel) ─────────────────────────
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(2);
+  spr.setTextColor(spr.color565(190, 215, 245));
+  spr.drawString(tr("CALIDAD DEL AIRE", "AIR QUALITY"), centerX, 30);
 
-  // AQI number
-  spr.setTextColor(aqiColor);
+  // ── 3. Central Big AQI Number & Category Badge ────────────────────────────
   spr.setTextFont(4);
-  spr.setTextSize(aqi >= 100 ? 2 : 3);
-  spr.drawString(String(aqi), centerX, centerY - 18);
+  spr.setTextSize(2); // Crisp 52px numeric font, perfectly proportioned
+  spr.setTextColor(aqiColor);
+  spr.drawString(String(aqi), centerX, 88);
 
-  // Level label
+  // Category Badge (e.g. BUENO, MODERADO)
   spr.setTextFont(2);
   spr.setTextSize(1);
+  String aqiLabel = getAqiLabel(aqi);
+  int badgeW = spr.textWidth(aqiLabel) + 16;
+  int badgeH = 17;
+  int badgeY = 117;
+  spr.fillRoundRect(centerX - badgeW / 2, badgeY, badgeW, badgeH, 4, spr.color565(14, 22, 32));
+  spr.drawRoundRect(centerX - badgeW / 2, badgeY, badgeW, badgeH, 4, aqiColor);
   spr.setTextColor(aqiColor);
-  spr.drawString(getAqiLabel(aqi), centerX, centerY + 18);
+  spr.drawString(aqiLabel, centerX, badgeY + badgeH / 2);
 
-  spr.setTextColor(spr.color565(160, 160, 160));
-  spr.drawString(tr("CALIDAD AIRE", "AIR QUALITY"), centerX, 24);
-  spr.drawString(tr("(AQI)", "(AQI)"), centerX, 36);
+  // ── 4. The 4 Pollutant Cards (PM2.5, PM10, O3, NO2) ───────────────────────
+  auto drawPollutantCard = [](int cardCx, int cardCy, const char* name, float val, uint16_t nameCol) {
+    int w = 42, h = 29;
+    int x = cardCx - w / 2;
+    int y = cardCy - h / 2;
+    spr.fillRoundRect(x, y, w, h, 4, spr.color565(14, 20, 30));
+    spr.drawRoundRect(x, y, w, h, 4, spr.color565(35, 50, 72));
+    
+    // Label
+    spr.setTextDatum(MC_DATUM);
+    spr.setTextFont(1);
+    spr.setTextColor(nameCol);
+    spr.drawString(name, cardCx, y + 8);
 
-  // Station name
-  spr.setTextColor(spr.color565(130, 180, 255));
-  int spaceIdx = currentAQI.stationName.indexOf(' ', currentAQI.stationName.length() / 2 - 2);
-  if (currentAQI.stationName.length() > 18 && spaceIdx > 0) {
-    spr.drawString(currentAQI.stationName.substring(0, spaceIdx), centerX, 204);
-    spr.drawString(currentAQI.stationName.substring(spaceIdx + 1), centerX, 216);
-  } else {
-    spr.drawString(currentAQI.stationName, centerX, 210);
+    // Value
+    spr.setTextFont(2);
+    spr.setTextColor(val >= 0 ? TFT_WHITE : spr.color565(120, 130, 145));
+    if (val >= 0) {
+      spr.drawString(String((int)round(val)), cardCx, y + 20);
+    } else {
+      spr.drawString("--", cardCx, y + 20);
+    }
+  };
+
+  // Left column x=50, Right column x=190 (17px margin from central AQI number)
+  // Top row y=78, Bottom row y=126
+  drawPollutantCard(50,  78, "PM2.5", currentAQI.pm25, spr.color565(160, 205, 255));
+  drawPollutantCard(190, 78, "PM10",  currentAQI.pm10, spr.color565(160, 205, 255));
+  drawPollutantCard(50, 126, "O3",    currentAQI.o3,   spr.color565(160, 240, 190));
+  drawPollutantCard(190, 126, "NO2",   currentAQI.no2,  spr.color565(255, 215, 160));
+
+  // ── 5. Station Name at Bottom (Clean ASCII & title-cased) ──────────────────
+  String cleanStation = "";
+  bool capitalizeNext = true;
+  for (unsigned int i = 0; i < currentAQI.stationName.length(); i++) {
+    char c = currentAQI.stationName[i];
+    // Map common accents to ASCII
+    if ((unsigned char)c == 0xC3 && i + 1 < currentAQI.stationName.length()) {
+      unsigned char nextC = (unsigned char)currentAQI.stationName[++i];
+      if (nextC == 0xA1) c = 'a';
+      else if (nextC == 0xA9) c = 'e';
+      else if (nextC == 0xAD) c = 'i';
+      else if (nextC == 0xB3) c = 'o';
+      else if (nextC == 0xBA) c = 'u';
+      else if (nextC == 0xB1) c = 'n';
+      else continue;
+    }
+    if (isspace(c) || c == ',' || c == '-') {
+      capitalizeNext = true;
+      cleanStation += c;
+    } else if (capitalizeNext) {
+      cleanStation += (char)toupper(c);
+      capitalizeNext = false;
+    } else {
+      cleanStation += (char)tolower(c);
+    }
   }
 
-  // Sub-pollutants in quadrants
-  const int sx = 55;
-  spr.setTextFont(1);
-  spr.setTextSize(1);
+  spr.setTextDatum(MC_DATUM);
+  spr.setTextFont(2);
+  spr.setTextColor(spr.color565(140, 185, 240));
 
-  // PM2.5 top-left
-  spr.setTextColor(spr.color565(180, 180, 255));
-  spr.drawString("PM2.5", centerX - sx, centerY - 42);
-  spr.setTextColor(currentAQI.pm25 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
-  spr.drawString(currentAQI.pm25 >= 0 ? String(currentAQI.pm25, 0) : "N/A", centerX - sx, centerY - 30);
+  int splitIdx = -1;
+  if (cleanStation.length() > 15) {
+    splitIdx = cleanStation.indexOf(',', 6);
+    if (splitIdx < 0 || splitIdx > 18) {
+      splitIdx = cleanStation.indexOf(' ', cleanStation.length() / 2 - 2);
+    }
+  }
 
-  // PM10 top-right
-  spr.setTextColor(spr.color565(180, 180, 255));
-  spr.drawString("PM10",  centerX + sx, centerY - 42);
-  spr.setTextColor(currentAQI.pm10 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
-  spr.drawString(currentAQI.pm10 >= 0 ? String(currentAQI.pm10, 0) : "N/A", centerX + sx, centerY - 30);
-
-  // O3 bottom-left
-  spr.setTextColor(spr.color565(180, 255, 180));
-  spr.drawString("O3",    centerX - sx, centerY + 30);
-  spr.setTextColor(currentAQI.o3 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
-  spr.drawString(currentAQI.o3 >= 0   ? String(currentAQI.o3, 0)   : "N/A", centerX - sx, centerY + 42);
-
-  // NO2 bottom-right
-  spr.setTextColor(spr.color565(255, 210, 160));
-  spr.drawString("NO2",   centerX + sx, centerY + 30);
-  spr.setTextColor(currentAQI.no2 >= 0 ? TFT_WHITE : spr.color565(70, 70, 70));
-  spr.drawString(currentAQI.no2 >= 0  ? String(currentAQI.no2, 0)  : "N/A", centerX + sx, centerY + 42);
-
-  // Center dot
-  spr.fillCircle(centerX, centerY - 3, 2, aqiColor);
+  if (splitIdx > 0 && splitIdx < (int)cleanStation.length() - 1) {
+    String line1 = cleanStation.substring(0, splitIdx);
+    String line2 = cleanStation.substring(splitIdx + 1);
+    line1.trim();
+    line2.trim();
+    spr.drawString(line1, centerX, 178);
+    spr.drawString(line2, centerX, 194);
+  } else {
+    spr.drawString(cleanStation, centerX, 186);
+  }
 }
 
 void drawCryptoUI() {
@@ -2620,8 +2672,8 @@ void drawCryptoUI() {
 }
 
 
- 
- 
+
+
 
 
 // ─── Rain Radar Screen ──────────────────────────────────────────────────────
