@@ -2738,100 +2738,149 @@ static uint16_t rainColor(float t) {
   }
 }
 
+// Geographic context based on current lat/lon coordinates and airport ID
+struct GeoContext {
+  String cityName;
+  String waterName;
+  struct Town { const char* name; int x; int y; } towns[4];
+  int riverPts[8][2];
+  int numRiverPts;
+};
+
+static GeoContext resolveGeoContext(float lat, float lon, String airportId, const WeatherData& cw) {
+  GeoContext geo;
+  
+  geo.cityName = (airportId != "") ? getAirportName(airportId) : "LOCAL";
+  geo.waterName = "RADAR 50km";
+  geo.towns[0] = {"N 15km", 120, 80};
+  geo.towns[1] = {"E 20km", 192, 115};
+  geo.towns[2] = {"S 15km", 120, 155};
+  geo.towns[3] = {"W 20km", 45, 115};
+  geo.numRiverPts = 0;
+
+  // 1. Madrid / Barajas region (lat ~ 39.8..41.2, lon ~ -4.5..-3.0) or airport MAD
+  if (airportId == "MAD" || (lat >= 39.8f && lat <= 41.2f && lon >= -4.5f && lon <= -3.0f)) {
+    geo.cityName = "MADRID";
+    geo.waterName = "R\xCDO JARAMA";
+    geo.towns[0] = {"Alcobendas", 170, 78};
+    geo.towns[1] = {"Alcal\xE1 de H.", 192, 107};
+    geo.towns[2] = {"Torrej\xF3n", 175, 138};
+    geo.towns[3] = {"Getafe", 164, 156};
+    
+    // Jarama river flowing past Barajas airport North-to-South
+    int rPts[][2] = {
+      {140, 25}, {135, 60}, {130, 95}, {126, 118}, {122, 145},
+      {115, 175}, {112, 205}, {118, 238}
+    };
+    geo.numRiverPts = 8;
+    for (int i = 0; i < 8; i++) {
+      geo.riverPts[i][0] = rPts[i][0];
+      geo.riverPts[i][1] = rPts[i][1];
+    }
+  }
+  // 2. Barcelona / El Prat (lat ~ 41.1..41.7, lon ~ 1.8..2.5) or airport BCN
+  else if (airportId == "BCN" || (lat >= 41.1f && lat <= 41.7f && lon >= 1.8f && lon <= 2.5f)) {
+    geo.cityName = "BARCELONA";
+    geo.waterName = "MEDITERR\xC1NEO";
+    geo.towns[0] = {"Badalona", 185, 80};
+    geo.towns[1] = {"El Prat", 100, 135};
+    geo.towns[2] = {"Hospitalet", 105, 105};
+    geo.towns[3] = {"Sabadell", 170, 65};
+    
+    int rPts[][2] = {
+      {25, 200}, {60, 170}, {100, 145}, {145, 120}, {185, 95},
+      {215, 65}, {235, 45}, {239, 40}
+    };
+    geo.numRiverPts = 8;
+    for (int i = 0; i < 8; i++) {
+      geo.riverPts[i][0] = rPts[i][0];
+      geo.riverPts[i][1] = rPts[i][1];
+    }
+  }
+  // 3. London / Heathrow (lat ~ 51.3..51.7, lon ~ -0.6..0.2) or airport LHR
+  else if (airportId == "LHR" || (lat >= 51.3f && lat <= 51.7f && lon >= -0.6f && lon <= 0.2f)) {
+    geo.cityName = "LONDRES";
+    geo.waterName = "RIVER THAMES";
+    geo.towns[0] = {"Windsor", 80, 115};
+    geo.towns[1] = {"Slough", 90, 85};
+    geo.towns[2] = {"Watford", 170, 75};
+    geo.towns[3] = {"Richmond", 180, 135};
+    
+    int rPts[][2] = {
+      {30, 120}, {70, 115}, {110, 125}, {145, 120}, {175, 130},
+      {200, 125}, {225, 135}, {238, 140}
+    };
+    geo.numRiverPts = 8;
+    for (int i = 0; i < 8; i++) {
+      geo.riverPts[i][0] = rPts[i][0];
+      geo.riverPts[i][1] = rPts[i][1];
+    }
+  }
+  // 4. Paris / CDG (lat ~ 48.6..49.2, lon ~ 2.0..2.7) or airport CDG
+  else if (airportId == "CDG" || (lat >= 48.6f && lat <= 49.2f && lon >= 2.0f && lon <= 2.7f)) {
+    geo.cityName = "PARIS";
+    geo.waterName = "LA SEINE";
+    geo.towns[0] = {"Saint-Denis", 100, 115};
+    geo.towns[1] = {"Versailles", 85, 150};
+    geo.towns[2] = {"Meaux", 200, 110};
+    geo.towns[3] = {"Cr\xE9teil", 140, 155};
+    
+    int rPts[][2] = {
+      {30, 155}, {75, 140}, {115, 135}, {145, 120}, {175, 115},
+      {205, 95}, {225, 80}, {238, 70}
+    };
+    geo.numRiverPts = 8;
+    for (int i = 0; i < 8; i++) {
+      geo.riverPts[i][0] = rPts[i][0];
+      geo.riverPts[i][1] = rPts[i][1];
+    }
+  }
+  // 5. Frankfurt / Hanau (lat ~ 49.8..50.3, lon ~ 8.3..9.2) or airport FRA
+  else if (airportId == "FRA" || (lat >= 49.8f && lat <= 50.3f && lon >= 8.3f && lon <= 9.2f)) {
+    geo.cityName = "FRANKFURT";
+    geo.waterName = "RHEIN-MAIN";
+    geo.towns[0] = {"Hanau", 185, 105};
+    geo.towns[1] = {"Offenbach", 155, 115};
+    geo.towns[2] = {"Darmstadt", 125, 155};
+    geo.towns[3] = {"Wiesbaden", 75, 105};
+    
+    int rPts[][2] = {
+      {215, 35}, {190, 65}, {165, 95}, {145, 115}, {125, 130},
+      {110, 150}, {105, 180}, {120, 238}
+    };
+    geo.numRiverPts = 8;
+    for (int i = 0; i < 8; i++) {
+      geo.riverPts[i][0] = rPts[i][0];
+      geo.riverPts[i][1] = rPts[i][1];
+    }
+  }
+  // 6. Generic / Custom Coordinates:
+  else {
+    if (cw.valid && cw.ubi != "" && cw.ubi != "Open-Meteo") {
+      int cIdx = cw.ubi.indexOf(',');
+      geo.cityName = (cIdx > 0 ? cw.ubi.substring(0, cIdx) : cw.ubi);
+      geo.cityName.trim();
+      geo.cityName.toUpperCase();
+      if (geo.cityName.length() > 9) geo.cityName = geo.cityName.substring(0, 9);
+    }
+    
+    char coordBuf[16];
+    snprintf(coordBuf, sizeof(coordBuf), "%.2f%c %.2f%c",
+             fabs(lat), lat >= 0 ? 'N' : 'S',
+             fabs(lon), lon >= 0 ? 'E' : 'W');
+    geo.waterName = String(coordBuf);
+    
+    geo.towns[0] = {"N 15km", 120, 78};
+    geo.towns[1] = {"E 20km", 190, 115};
+    geo.towns[2] = {"S 15km", 120, 156};
+    geo.towns[3] = {"W 20km", 50, 115};
+  }
+
+  return geo;
+}
+
 void drawRainRadarUI(struct tm* timeinfo) {
-  // ── 1. Map Base: Realistic dark geography ─────────────────────────────────
-  // Fill base terrain: dark slate grey / charcoal
-  spr.fillSprite(spr.color565(34, 38, 46));
-
-  // Circular clip mask (fill outside circle black)
-  for (int py = 0; py < 240; py++) {
-    int dy = py - 120;
-    int hw = (int)sqrtf(120.0f * 120.0f - (float)(dy * dy));
-    if (hw < 120) {
-      spr.drawLine(0, py, 120 - hw - 1, py, TFT_BLACK);
-      spr.drawLine(120 + hw + 1, py, 239, py, TFT_BLACK);
-    }
-  }
-
-  // Draw terrain elevation/forest patches for topography
-  uint16_t topoCol1 = spr.color565(42, 46, 56);
-  uint16_t topoCol2 = spr.color565(28, 32, 40);
-  spr.fillRoundRect(140, 20, 90, 110, 20, topoCol1);
-  spr.fillRoundRect(160, 90, 75, 80, 16, topoCol2);
-  spr.fillRoundRect(15, 100, 70, 90, 15, topoCol1);
-
-  // Rivers (Rhine / Main river system) in deep river blue
-  uint16_t riverCol = spr.color565(12, 32, 68);
-  int riverPts[][2] = {
-    {215, 35}, {190, 65}, {165, 95}, {145, 115}, {125, 130},
-    {110, 150}, {105, 180}, {112, 210}, {120, 238}
-  };
-  for (int i = 0; i < 8; i++) {
-    int x0 = riverPts[i][0], y0 = riverPts[i][1];
-    int x1 = riverPts[i+1][0], y1 = riverPts[i+1][1];
-    spr.drawLine(x0, y0, x1, y1, riverCol);
-    spr.drawLine(x0 + 1, y0, x1 + 1, y1, riverCol);
-    spr.drawLine(x0, y0 + 1, x1, y1 + 1, riverCol);
-  }
-  // Tributary branching east
-  int tribPts[][2] = { {145, 115}, {170, 135}, {200, 145}, {235, 150} };
-  for (int i = 0; i < 3; i++) {
-    spr.drawLine(tribPts[i][0], tribPts[i][1], tribPts[i+1][0], tribPts[i+1][1], riverCol);
-    spr.drawLine(tribPts[i][0] + 1, tribPts[i][1], tribPts[i+1][0] + 1, tribPts[i+1][1], riverCol);
-  }
-
-  // Subtle administrative boundary lines (dashed)
-  uint16_t borderCol = spr.color565(60, 66, 78);
-  int bndPts[][2] = { {60, 20}, {90, 80}, {130, 105}, {170, 115}, {205, 130}, {225, 180} };
-  for (int i = 0; i < 5; i++) {
-    int bx0 = bndPts[i][0], by0 = bndPts[i][1];
-    int bx1 = bndPts[i+1][0], by1 = bndPts[i+1][1];
-    for (float f = 0.0f; f <= 1.0f; f += 0.15f) {
-      int px = (int)(bx0 + f * (bx1 - bx0));
-      int py = (int)(by0 + f * (by1 - by0));
-      spr.drawPixel(px, py, borderCol);
-    }
-  }
-
-  // ── 2. Doppler Weather Radar Precipitation Echoes ────────────────────────
-  struct RadarBand { int cx, cy, rx, ry, angle; float intensity; };
-  RadarBand bands[] = {
-    {115, 115, 75, 42, -35, 0.95f},
-    {90,  60,  50, 30, -25, 0.85f},
-    {165, 145, 45, 24, -40, 0.70f},
-    {45,  155, 38, 22, -15, 0.60f},
-    {65,  205, 40, 20, -30, 0.65f}
-  };
-
-  for (int py = 25; py < 220; py += 2) {
-    int dy = py - 120;
-    int hw = (int)sqrtf(115.0f * 115.0f - (float)(dy * dy));
-    if (hw <= 0) continue;
-    int minPx = 120 - hw, maxPx = 120 + hw;
-
-    for (int px = minPx; px <= maxPx; px += 2) {
-      float maxEcho = 0.0f;
-      for (int b = 0; b < 5; b++) {
-        float rad = bands[b].angle * 0.0174533f;
-        float cosA = cosf(rad), sinA = sinf(rad);
-        float dx = px - bands[b].cx, dyb = py - bands[b].cy;
-        float rotX = (dx * cosA + dyb * sinA) / (float)bands[b].rx;
-        float rotY = (-dx * sinA + dyb * cosA) / (float)bands[b].ry;
-        float distSq = rotX * rotX + rotY * rotY;
-        if (distSq < 1.0f) {
-          float echo = bands[b].intensity * (1.0f - sqrtf(distSq));
-          if (echo > maxEcho) maxEcho = echo;
-        }
-      }
-
-      if (maxEcho > 0.12f) {
-        uint16_t rc = rainColor(maxEcho);
-        spr.fillRect(px, py, 2, 2, rc);
-      }
-    }
-  }
-
-  // ── 3. Map Labels & Town Markers ──────────────────────────────────────────
+  // ── 0. Get Weather Data & Geographic Context ──────────────────────────────
   WeatherData cw;
   if (dataMutex != NULL) {
     xSemaphoreTake(dataMutex, portMAX_DELAY);
@@ -2841,7 +2890,120 @@ void drawRainRadarUI(struct tm* timeinfo) {
     cw = currentWeather;
   }
 
-  // Center location spark marker at (120, 118)
+  GeoContext geo = resolveGeoContext(pref_lat, pref_lon, pref_airport_id, cw);
+
+  // ── 1. Map Base: Real topography styled for current coordinates ───────────
+  spr.fillSprite(spr.color565(34, 38, 46));
+
+  // Circular clip mask
+  for (int py = 0; py < 240; py++) {
+    int dy = py - 120;
+    int hw = (int)sqrtf(120.0f * 120.0f - (float)(dy * dy));
+    if (hw < 120) {
+      spr.drawLine(0, py, 120 - hw - 1, py, TFT_BLACK);
+      spr.drawLine(120 + hw + 1, py, 239, py, TFT_BLACK);
+    }
+  }
+
+  // Draw terrain patches for topography feel
+  uint16_t topoCol1 = spr.color565(42, 46, 56);
+  uint16_t topoCol2 = spr.color565(28, 32, 40);
+  spr.fillRoundRect(135, 20, 95, 110, 20, topoCol1);
+  spr.fillRoundRect(160, 90, 75, 80, 16, topoCol2);
+  spr.fillRoundRect(15, 100, 70, 90, 15, topoCol1);
+
+  // Rivers / coastline matching geography
+  uint16_t riverCol = spr.color565(12, 34, 72);
+  if (geo.numRiverPts > 1) {
+    for (int i = 0; i < geo.numRiverPts - 1; i++) {
+      int x0 = geo.riverPts[i][0], y0 = geo.riverPts[i][1];
+      int x1 = geo.riverPts[i+1][0], y1 = geo.riverPts[i+1][1];
+      spr.drawLine(x0, y0, x1, y1, riverCol);
+      spr.drawLine(x0 + 1, y0, x1 + 1, y1, riverCol);
+      spr.drawLine(x0, y0 + 1, x1, y1 + 1, riverCol);
+    }
+  }
+
+  // Administrative / range boundaries
+  uint16_t borderCol = spr.color565(55, 60, 72);
+  spr.drawCircle(120, 118, 50, borderCol);
+  spr.drawCircle(120, 118, 90, borderCol);
+
+  // ── 2. Authentic Doppler Radar Echoes for Current Weather ──────────────────
+  float prec = cw.valid ? cw.prec : 0.0f;
+  float windDir = cw.valid ? cw.dv : 240.0f;
+  float windRad = windDir * 0.0174533f;
+  float windCos = cosf(windRad);
+  float windSin = sinf(windRad);
+
+  if (prec > 0.05f || (cw.valid && cw.weather_code >= 51 && cw.weather_code <= 82)) {
+    float rainIntensity = prec / 4.0f;
+    if (rainIntensity < 0.35f) rainIntensity = 0.35f;
+    if (rainIntensity > 1.0f) rainIntensity = 1.0f;
+
+    struct RadarEcho { int ox; int oy; int rx; int ry; float str; };
+    RadarEcho echoes[] = {
+      {0, 0, (int)(45 + rainIntensity * 30), (int)(22 + rainIntensity * 18), rainIntensity},
+      {(int)(-35 * windSin), (int)(-35 * windCos), 35, 18, rainIntensity * 0.85f},
+      {(int)(40 * windSin),  (int)(40 * windCos),  42, 20, rainIntensity * 0.70f},
+      {(int)(35 * windCos),  (int)(-35 * windSin), 30, 15, rainIntensity * 0.60f}
+    };
+
+    for (int py = 25; py < 220; py += 2) {
+      int dy = py - 118;
+      int hw = (int)sqrtf(115.0f * 115.0f - (float)(dy * dy));
+      if (hw <= 0) continue;
+      int minPx = 120 - hw, maxPx = 120 + hw;
+
+      for (int px = minPx; px <= maxPx; px += 2) {
+        float maxEcho = 0.0f;
+        int dx = px - 120;
+
+        for (int b = 0; b < 4; b++) {
+          int ex = dx - echoes[b].ox;
+          int ey = dy - echoes[b].oy;
+          float rotX = (ex * windCos + ey * windSin) / (float)echoes[b].rx;
+          float rotY = (-ex * windSin + ey * windCos) / (float)echoes[b].ry;
+          float distSq = rotX * rotX + rotY * rotY;
+          if (distSq < 1.0f) {
+            float e = echoes[b].str * (1.0f - sqrtf(distSq));
+            if (e > maxEcho) maxEcho = e;
+          }
+        }
+
+        if (maxEcho > 0.10f) {
+          uint16_t rc = rainColor(maxEcho);
+          spr.fillRect(px, py, 2, 2, rc);
+        }
+      }
+    }
+  } else if (cw.valid && cw.cloud_cover > 75) {
+    int ox = (int)(-50 * windSin), oy = (int)(-50 * windCos);
+    for (int py = 30; py < 215; py += 3) {
+      int dy = py - 118;
+      int hw = (int)sqrtf(115.0f * 115.0f - (float)(dy * dy));
+      if (hw <= 0) continue;
+      for (int px = 120 - hw; px <= 120 + hw; px += 3) {
+        float dist = sqrtf((float)((px - 120 - ox)*(px - 120 - ox) + (dy - oy)*(dy - oy)));
+        if (dist < 40.0f) {
+          float echo = 0.30f * (1.0f - dist / 40.0f);
+          if (echo > 0.12f) {
+            spr.fillRect(px, py, 2, 2, rainColor(echo));
+          }
+        }
+      }
+    }
+  } else {
+    // Clear-air Doppler radar beam
+    uint16_t scanCol = spr.color565(20, 50, 75);
+    spr.drawCircle(120, 118, 40, scanCol);
+    spr.drawCircle(120, 118, 75, scanCol);
+    spr.drawCircle(120, 118, 105, scanCol);
+    spr.drawLine(120, 118, 120 + (int)(110 * windSin), 118 + (int)(110 * windCos), spr.color565(30, 70, 105));
+  }
+
+  // ── 3. Map Labels & Town Markers for Current Geography ────────────────────
+  // Center location marker at (120, 118)
   spr.drawCircle(120, 118, 2, TFT_WHITE);
   spr.fillCircle(120, 118, 1, TFT_WHITE);
   spr.drawLine(120, 112, 120, 124, TFT_WHITE);
@@ -2849,36 +3011,21 @@ void drawRainRadarUI(struct tm* timeinfo) {
   spr.drawLine(116, 114, 124, 122, TFT_WHITE);
   spr.drawLine(116, 122, 124, 114, TFT_WHITE);
 
-  // Location city name in bold white uppercase
+  // Center city name in bold white
   spr.setTextDatum(ML_DATUM);
   spr.setTextFont(2);
   spr.setTextColor(TFT_WHITE);
-  String cityName = "HANAU";
-  if (cw.valid && cw.ubi != "" && cw.ubi != "Open-Meteo") {
-    int commaIdx = cw.ubi.indexOf(',');
-    cityName = commaIdx > 0 ? cw.ubi.substring(0, commaIdx) : cw.ubi;
-    cityName.trim();
-    cityName.toUpperCase();
-    if (cityName.length() > 9) cityName = cityName.substring(0, 9);
-  }
-  spr.drawString(cityName, 130, 118);
+  spr.drawString(geo.cityName, 130, 118);
 
-  // Regional towns with dots (matching picture)
+  // Regional towns for this geography
   spr.setTextFont(1);
   spr.setTextColor(spr.color565(210, 215, 225));
-  spr.fillCircle(192, 107, 2, spr.color565(160, 170, 185));
-  spr.drawString("Bad Orb", 197, 107);
+  for (int i = 0; i < 4; i++) {
+    spr.fillCircle(geo.towns[i].x - 4, geo.towns[i].y, 2, spr.color565(160, 170, 185));
+    spr.drawString(geo.towns[i].name, geo.towns[i].x, geo.towns[i].y);
+  }
 
-  spr.fillCircle(172, 138, 2, spr.color565(160, 170, 185));
-  spr.drawString("Aschaffenburg", 177, 138);
-
-  spr.fillCircle(164, 156, 2, spr.color565(160, 170, 185));
-  spr.drawString("Erlenbach am Main", 169, 156);
-
-  spr.fillCircle(210, 85, 2, spr.color565(160, 170, 185));
-  spr.drawString("Schl\x81""c", 214, 85);
-
-  // OSM attribution watermark (centered at y=156)
+  // OSM attribution watermark
   spr.setTextDatum(MC_DATUM);
   spr.setTextColor(spr.color565(140, 150, 165));
   spr.drawString("(c) OpenStreetMap contributors \x95 OpenMapTiles", 120, 156);
@@ -2895,18 +3042,16 @@ void drawRainRadarUI(struct tm* timeinfo) {
 
   char timeStr[9];
   sprintf(timeStr, "%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min);
-  spr.setTextColor(spr.color565(255, 235, 120)); // Glowing light yellow
+  spr.setTextColor(spr.color565(255, 235, 120));
   spr.drawString(timeStr, 156, 14);
 
   // ── 6. Live / Latest Badges ───────────────────────────────────────────────
-  // Live badge (green) at x=62, y=32
   spr.fillRoundRect(43, 23, 38, 18, 8, spr.color565(6, 42, 20));
   spr.drawRoundRect(43, 23, 38, 18, 8, spr.color565(25, 170, 70));
   spr.setTextFont(2);
   spr.setTextColor(TFT_WHITE);
   spr.drawString("Live", 62, 32);
 
-  // Latest badge (blue) at x=176, y=32
   spr.fillRoundRect(152, 23, 48, 18, 8, spr.color565(10, 36, 75));
   spr.drawRoundRect(152, 23, 48, 18, 8, spr.color565(35, 115, 220));
   spr.setTextColor(spr.color565(215, 235, 255));
@@ -2918,24 +3063,20 @@ void drawRainRadarUI(struct tm* timeinfo) {
   spr.drawRoundRect(pX, pY, pW, pH, 8, spr.color565(28, 55, 90));
 
   if (cw.valid) {
-    // Weather icon
     int iconType = wmoToIconSmall(cw.weather_code);
     drawSmallWeatherIcon(pX + 22, pY + 22, iconType);
 
-    // Temperature (Large bold white)
     spr.setTextDatum(ML_DATUM);
     spr.setTextFont(4);
     spr.setTextColor(TFT_WHITE);
     String taStr = String((int)round(cw.ta)) + "\xB0" "C";
     spr.drawString(taStr, pX + 44, pY + 18);
 
-    // Approx / max
     spr.setTextFont(2);
     spr.setTextColor(spr.color565(170, 195, 225));
     String maxStr = "~ " + String((int)round(forecast[0].valid ? forecast[0].tamax : cw.tamax)) + "\xB0" "C";
     spr.drawString(maxStr, pX + 44, pY + 37);
 
-    // Precipitation with droplet
     drawMiniDroplet(pX + 16, pY + 54, spr.color565(80, 175, 255));
     spr.setTextColor(TFT_WHITE);
     spr.drawString(String(cw.prec, 1) + " mm", pX + 24, pY + 54);
@@ -2951,14 +3092,14 @@ void drawRainRadarUI(struct tm* timeinfo) {
     spr.setTextFont(2);
     spr.setTextColor(TFT_WHITE);
 
-    // Row 1 (y=55): Droplet + Humidity%  |  Cloud + CloudCover%
+    // Row 1: Droplet + Humidity%  |  Cloud + CloudCover%
     drawMiniDroplet(rX + 11, rY + 11, spr.color565(80, 175, 255));
     spr.drawString(String((int)round(cw.hr)) + "%", rX + 18, rY + 11);
 
     drawMiniCloud(rX + 61, rY + 11, spr.color565(200, 205, 220));
     spr.drawString(String(cw.cloud_cover) + "%", rX + 68, rY + 11);
 
-    // Row 2 (y=73): Wind icon + Dir & Speed(kt)  |  Lightning + Gust(kt)
+    // Row 2: Wind icon + Dir & Speed(kt)  |  Lightning + Gust(kt)
     const char* dirs[] = {"N","NE","E","SE","S","SW","W","NW","N"};
     int dirIdx = (int)((cw.dv + 22.5f) / 45.0f) % 8;
     int windKt = (int)round(cw.vv * 0.54f);
@@ -2970,7 +3111,7 @@ void drawRainRadarUI(struct tm* timeinfo) {
     drawMiniBolt(rX + 61, rY + 29, TFT_YELLOW);
     spr.drawString(String(gustKt) + "kt", rX + 68, rY + 29);
 
-    // Row 3 (y=91): Pressure (≡ 1004)  |  Eye + Visibility (👁 5nm)
+    // Row 3: Pressure (≡ 1004)  |  Eye + Visibility (👁 5nm)
     drawMiniPressure(rX + 11, rY + 47, spr.color565(190, 205, 225));
     spr.drawString(String((int)round(cw.pressure)), rX + 18, rY + 47);
 
@@ -2983,7 +3124,6 @@ void drawRainRadarUI(struct tm* timeinfo) {
   spr.fillRoundRect(fX, fY, fW, fH, 6, spr.color565(8, 16, 26));
   spr.drawRoundRect(fX, fY, fW, fH, 6, spr.color565(28, 55, 90));
 
-  // Dividers at x=92 and x=146
   spr.drawLine(fX + 54, fY + 4, fX + 54, fY + fH - 4, spr.color565(28, 55, 90));
   spr.drawLine(fX + 109, fY + 4, fX + 109, fY + fH - 4, spr.color565(28, 55, 90));
 
@@ -2992,14 +3132,12 @@ void drawRainRadarUI(struct tm* timeinfo) {
   for (int i = 0; i < 3; i++) {
     int colCx = fX + i * colW + colW / 2;
 
-    // Line 1: Day Name (centered)
     spr.setTextDatum(MC_DATUM);
     spr.setTextFont(2);
     spr.setTextColor(spr.color565(180, 220, 255));
     spr.drawString(dayLabels[i], colCx, fY + 9);
 
     if (forecast[i].valid) {
-      // Line 2: Icon on left, max/min on right
       drawSmallWeatherIcon(colCx - 14, fY + 23, wmoToIconSmall(forecast[i].weather_code));
 
       spr.setTextDatum(ML_DATUM);
@@ -3008,7 +3146,6 @@ void drawRainRadarUI(struct tm* timeinfo) {
       String maxMin = String((int)round(forecast[i].tamax)) + "/" + String((int)round(forecast[i].tamin));
       spr.drawString(maxMin, colCx - 4, fY + 23);
 
-      // Line 3: Droplet + precip probability %
       drawMiniDroplet(colCx - 12, fY + 36, spr.color565(80, 175, 255));
       spr.setTextColor(spr.color565(140, 205, 255));
       spr.drawString(String(forecast[i].prec_prob) + "%", colCx - 5, fY + 36);
@@ -3021,13 +3158,11 @@ void drawRainRadarUI(struct tm* timeinfo) {
 
   // ── 10. Colour Legend: Light [rainbow bar] Heavy ──────────────────────────
   int lgY = 217;
-  // "Light" text (right-aligned to x=80)
   spr.setTextDatum(MR_DATUM);
   spr.setTextFont(2);
   spr.setTextColor(TFT_WHITE);
   spr.drawString("Light", 80, lgY);
 
-  // Rainbow bar
   int barX = 86, barW = 68, barH = 5;
   for (int i = 0; i < barW; i++) {
     float t = (float)i / (float)barW;
@@ -3036,14 +3171,13 @@ void drawRainRadarUI(struct tm* timeinfo) {
   }
   spr.drawRoundRect(barX - 1, lgY - 3, barW + 2, barH + 2, 2, spr.color565(35, 60, 95));
 
-  // "Heavy" text (left-aligned to x=160)
   spr.setTextDatum(ML_DATUM);
   spr.setTextColor(spr.color565(255, 140, 140));
   spr.drawString("Heavy", 160, lgY);
 
-  // ── 11. Bottom Location / River Label ─────────────────────────────────────
+  // ── 11. Bottom Water / River Label for Current Geography ──────────────────
   spr.setTextDatum(MC_DATUM);
   spr.setTextFont(1);
   spr.setTextColor(spr.color565(220, 230, 245));
-  spr.drawString("RHEIN", 120, 229);
+  spr.drawString(geo.waterName, 120, 229);
 }
