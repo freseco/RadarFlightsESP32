@@ -847,8 +847,8 @@ void handleSave() {
   else if (currentState == STATE_ISS && pref_show_iss) currentEnabled = true;
   else if (currentState == STATE_SUN && pref_show_sun) currentEnabled = true;
   else if (currentState == STATE_ZODIAC && pref_show_zodiac) currentEnabled = true;
-  else if (currentState == STATE_ELECTRICITY && pref_show_electricity) currentEnabled = true;
-  else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock) currentEnabled = true;
+  else if (currentState == STATE_ELECTRICITY && pref_show_electricity && electricity_valid) currentEnabled = true;
+  else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock && electricity_valid) currentEnabled = true;
   else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) currentEnabled = true;
   
   if (!currentEnabled) {

@@ -418,22 +418,33 @@ void fetchElectricityData() {
       if (!error) {
         JsonArray pvpc = doc["PVPC"];
         if (!pvpc.isNull() && pvpc.size() >= 24) {
+          bool anyPrice = false;
           for (int h = 0; h < 24; h++) {
             String pcb_str = pvpc[h]["PCB"].as<String>();
             pcb_str.replace(",", "."); // Convert 123,45 to 123.45
             electricity_prices[h] = pcb_str.toFloat() / 1000.0f;
+            if (electricity_prices[h] > 0.0001f) anyPrice = true;
           }
-          lastElectricityFetch = millis();
+          if (anyPrice) {
+            electricity_valid = true;
+            lastElectricityFetch = millis();
+          } else {
+            electricity_valid = false;
+          }
         } else {
+          electricity_valid = false;
           addErrorLog("Electricity JSON array missing");
         }
       } else {
+        electricity_valid = false;
         addErrorLog("Electricity JSON err");
       }
     } else {
+      electricity_valid = false;
       addErrorLog("Electricity HTTP " + String(httpCode));
     }
   } else {
+    electricity_valid = false;
     addErrorLog("Electricity API failed");
   }
   http.end();

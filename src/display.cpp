@@ -2141,9 +2141,7 @@ void drawElectricityUI(struct tm* timeinfo) {
   spr.setTextSize(2);
   spr.drawString(tr("PRECIO LUZ", "ELEC PRICE"), centerX, 25);
   
-  if (lastElectricityFetch == 0) {
-    spr.setTextSize(1);
-    spr.drawString(tr("Cargando...", "Loading..."), centerX, centerY);
+  if (!electricity_valid) {
     return;
   }
   
@@ -2241,12 +2239,7 @@ void drawElectricityUI(struct tm* timeinfo) {
 void drawElecClockUI(struct tm* timeinfo) {
   spr.fillSprite(TFT_BLACK);
 
-  if (lastElectricityFetch == 0) {
-    spr.setTextDatum(MC_DATUM);
-    spr.setTextColor(TFT_WHITE);
-    spr.setTextFont(1);
-    spr.setTextSize(1);
-    spr.drawString(tr("Cargando reloj...", "Loading clock..."), centerX, centerY);
+  if (!electricity_valid) {
     return;
   }
 

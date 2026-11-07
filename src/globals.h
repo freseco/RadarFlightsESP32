@@ -120,6 +120,7 @@ extern int pref_radar_time_s;
 // Electricity Prices
 extern float electricity_prices[24];
 extern unsigned long lastElectricityFetch;
+extern bool electricity_valid;
 
 // Crypto
 extern float crypto_prices[100];

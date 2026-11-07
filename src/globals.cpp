@@ -137,6 +137,7 @@ bool pref_show_elec_clock = true;
 bool pref_show_aqi = true;
 float electricity_prices[24] = {0};
 unsigned long lastElectricityFetch = 0;
+bool electricity_valid = false;
 
 // Air Quality data
 AirQualityData currentAQI = {0, 0.0f, 0.0f, 0.0f, 0.0f, "", false};

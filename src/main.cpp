@@ -60,7 +60,11 @@ void networkTask(void *pvParameters) {
       if (WiFi.status() == WL_CONNECTED) {
         fetchElectricityData();
       }
-      lastElectricityFetch = millis();
+      if (!electricity_valid) {
+        lastElectricityFetch = (now > 3480000) ? (now - 3480000) : 1; // Retry in 2 mins if failed
+      } else {
+        lastElectricityFetch = millis();
+      }
     }
 
     if (now - lastIssPassFetch > 1800000 || lastIssPassFetch == 0) { // Every 30 min
@@ -352,8 +356,8 @@ void nextState() {
     else if (currentState == STATE_ISS && pref_show_iss) enabled = true;
     else if (currentState == STATE_SUN && pref_show_sun) enabled = true;
     else if (currentState == STATE_ZODIAC && pref_show_zodiac) enabled = true;
-    else if (currentState == STATE_ELECTRICITY && pref_show_electricity) enabled = true;
-    else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock) enabled = true;
+    else if (currentState == STATE_ELECTRICITY && pref_show_electricity && electricity_valid) enabled = true;
+    else if (currentState == STATE_ELEC_CLOCK && pref_show_elec_clock && electricity_valid) enabled = true;
     else if (currentState == STATE_AIR_QUALITY && pref_show_aqi) enabled = true;
     else if (currentState == STATE_CRYPTO && pref_show_crypto) enabled = true;
     
@@ -547,6 +551,10 @@ void loop() {
     }
     return;
   } else if (currentState == STATE_ELECTRICITY) {
+    if (!electricity_valid) {
+      nextState();
+      return;
+    }
     if (now - lastDrawTime > 1000) {
       drawElectricityUI(&timeinfo);
       spr.pushSprite(0, 0);
@@ -554,6 +562,10 @@ void loop() {
     }
     return;
   } else if (currentState == STATE_ELEC_CLOCK) {
+    if (!electricity_valid) {
+      nextState();
+      return;
+    }
     if (now - lastDrawTime > 250) {
       drawElecClockUI(&timeinfo);
       spr.pushSprite(0, 0);
@@ -693,7 +705,7 @@ void loop() {
   } else if (ledRedUntil > now) {
     // Nuevo avión: Rojo
     setLED(255, 0, 0); 
-  } else if ((currentState == STATE_ELECTRICITY || currentState == STATE_ELEC_CLOCK) && timeValid && lastElectricityFetch > 0) {
+  } else if ((currentState == STATE_ELECTRICITY || currentState == STATE_ELEC_CLOCK) && timeValid && electricity_valid) {
     int cur_h = timeinfo.tm_hour;
     float p_min = 999.0;
     float p_max = -999.0;
