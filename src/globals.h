@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -164,6 +164,7 @@ struct DayForecast {
   float tamax;
   float tamin;
   float prec_sum;   // mm
+  int   prec_prob;  // % (precipitation probability)
   int   valid;
 };
 extern DayForecast forecast[3];  // [0]=today, [1]=tomorrow, [2]=day3
@@ -184,6 +185,10 @@ struct WeatherData {
   float tamin;
   int weather_code;
   int is_day;
+  float gust;     // km/h or kt
+  float pressure; // hPa
+  float vis;      // nm
+  int cloud_cover;// %
   String ubi;
   bool valid;
 };

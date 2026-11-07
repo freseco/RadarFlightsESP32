@@ -1,4 +1,4 @@
-#include "api.h"
+﻿#include "api.h"
 
 static String os_bearer_token = "";
 static unsigned long os_token_expiry = 0;
@@ -183,7 +183,7 @@ void fetchOpenMeteoWeather() {
   client.setInsecure();
   HTTPClient http;
   
-  String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(pref_lat, 4) + "&longitude=" + String(pref_lon, 4) + "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,is_day";
+  String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(pref_lat, 4) + "&longitude=" + String(pref_lon, 4) + "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility,cloud_cover,is_day";
   http.begin(client, url);
   
   int code = http.GET();
@@ -202,6 +202,11 @@ void fetchOpenMeteoWeather() {
         newWeather.dv = current["wind_direction_10m"].as<float>();
         newWeather.weather_code = current["weather_code"].as<int>();
         newWeather.is_day = current["is_day"].as<int>();
+        newWeather.gust = current["wind_gusts_10m"].is<float>() ? current["wind_gusts_10m"].as<float>() : (newWeather.vv * 1.35f);
+        newWeather.pressure = current["surface_pressure"].is<float>() ? current["surface_pressure"].as<float>() : 1013.2f;
+        float vMeters = current["visibility"].is<float>() ? current["visibility"].as<float>() : 10000.0f;
+        newWeather.vis = vMeters / 1852.0f; // Nautical miles (nm)
+        newWeather.cloud_cover = current["cloud_cover"].is<int>() ? current["cloud_cover"].as<int>() : 50;
         newWeather.tamax = newWeather.ta; // Open-Meteo current API doesn't provide max/min easily without daily, so we just use current.
         newWeather.tamin = newWeather.ta;
         newWeather.ubi = "Open-Meteo";
@@ -588,7 +593,7 @@ void fetchForecast() {
 
   String url = "https://api.open-meteo.com/v1/forecast?latitude=" + String(pref_lat, 4)
              + "&longitude=" + String(pref_lon, 4)
-             + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum"
+             + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
              + "&timezone=auto&forecast_days=3";
   http.begin(client, url);
   http.setTimeout(8000);
@@ -603,11 +608,17 @@ void fetchForecast() {
         JsonArray tamaxA = daily["temperature_2m_max"];
         JsonArray taminA = daily["temperature_2m_min"];
         JsonArray precA  = daily["precipitation_sum"];
+        JsonArray probA  = daily["precipitation_probability_max"];
         for (int i = 0; i < 3 && i < (int)codes.size(); i++) {
           forecast[i].weather_code = codes[i].as<int>();
           forecast[i].tamax        = tamaxA[i].as<float>();
           forecast[i].tamin        = taminA[i].as<float>();
           forecast[i].prec_sum     = precA[i].as<float>();
+          if (!probA.isNull() && i < (int)probA.size()) {
+            forecast[i].prec_prob  = probA[i].as<int>();
+          } else {
+            forecast[i].prec_prob  = (int)(forecast[i].prec_sum > 0.1f ? 80 : 20);
+          }
           forecast[i].valid        = 1;
         }
         lastForecastFetch = millis();
