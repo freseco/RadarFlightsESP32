@@ -2863,13 +2863,13 @@ void drawRainRadarUI(struct tm* timeinfo) {
   }
 
   // ── Bottom: 3-day forecast panel ──────────────────────────────────────────
-  // At y=160..218 safe x shrinks; use fX=46,fW=148 — safe at y=216: 51–189
-  int fX = 46, fY = 155, fW = 148, fH = 60;
+  // Moved up to y=128 (fH=50) leaving plenty of room below for legend
+  int fX = 28, fY = 128, fW = 184, fH = 50;
   spr.fillRoundRect(fX, fY, fW, fH, 6, spr.color565(0, 0, 0));
   spr.drawRoundRect(fX, fY, fW, fH, 6, spr.color565(55, 85, 130));
 
   const char* dayLabels[] = {"Today", "Tmrw", "Day 3"};
-  int colW = fW / 3; // ~49px each
+  int colW = fW / 3; // ~61px each
   for (int i = 0; i < 3; i++) {
     int colX = fX + i * colW;
     int colCx = colX + colW / 2;
@@ -2884,35 +2884,40 @@ void drawRainRadarUI(struct tm* timeinfo) {
     spr.drawString(dayLabels[i], colCx, fY + 10);
 
     if (forecast[i].valid) {
-      drawSmallWeatherIcon(colCx, fY + 28, wmoToIconSmall(forecast[i].weather_code));
+      drawSmallWeatherIcon(colCx, fY + 26, wmoToIconSmall(forecast[i].weather_code));
 
       spr.setTextFont(2);
       spr.setTextColor(TFT_WHITE, spr.color565(0, 0, 0));
       String maxMin = String((int)round(forecast[i].tamax)) + "/" + String((int)round(forecast[i].tamin));
-      spr.drawString(maxMin, colCx, fY + 46);
-
-      // Precipitation probability
-      spr.setTextColor(spr.color565(100, 170, 255), spr.color565(0, 0, 0));
-      spr.drawString("\xF0 " + String(forecast[i].prec_sum, 1) + "mm", colCx, fY + 56);
+      spr.drawString(maxMin, colCx, fY + 40);
     } else {
       spr.setTextColor(spr.color565(120, 120, 120), spr.color565(0, 0, 0));
-      spr.drawString("--/--", colCx, fY + 40);
+      spr.drawString("--/--", colCx, fY + 30);
     }
   }
 
-  // ── Colour legend: Light → Heavy ──────────────────────────────────────────
-  // At y=220 safe x range ≈ 60–180 (width 120)
-  int lgX = 62, lgY = 219, lgW = 116, lgH = 6;
-  for (int i = 0; i < lgW; i++) {
-    float t = (float)i / lgW;
+  // ── Colour legend: Light [bar] Heavy ──────────────────────────────────────
+  // Placed at y=198 on a single horizontal line, completely clear of forecast panel
+  int lgBarX = 84, lgBarY = 195, lgBarW = 72, lgBarH = 6;
+
+  // Background pill for entire legend
+  spr.fillRoundRect(42, 188, 156, 20, 4, spr.color565(0, 0, 0));
+  spr.drawRoundRect(42, 188, 156, 20, 4, spr.color565(35, 55, 85));
+
+  // Gradient rainbow bar
+  for (int i = 0; i < lgBarW; i++) {
+    float t = (float)i / (float)lgBarW;
     uint16_t col = rainColor(t);
-    spr.drawLine(lgX + i, lgY, lgX + i, lgY + lgH, col);
+    spr.drawLine(lgBarX + i, lgBarY, lgBarX + i, lgBarY + lgBarH - 1, col);
   }
+
   spr.setTextFont(2);
   spr.setTextSize(1);
-  spr.setTextDatum(ML_DATUM);
-  spr.setTextColor(spr.color565(180, 220, 255), TFT_BLACK);
-  spr.drawString("Light", lgX, lgY - 6);
   spr.setTextDatum(MR_DATUM);
-  spr.drawString("Heavy", lgX + lgW, lgY - 6);
+  spr.setTextColor(spr.color565(180, 220, 255), spr.color565(0, 0, 0));
+  spr.drawString("Light", lgBarX - 5, 198);
+
+  spr.setTextDatum(ML_DATUM);
+  spr.setTextColor(spr.color565(255, 160, 160), spr.color565(0, 0, 0));
+  spr.drawString("Heavy", lgBarX + lgBarW + 5, 198);
 }
