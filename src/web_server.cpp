@@ -417,7 +417,7 @@ const char* htmlForm = R"=====(
         }).catch(e => console.log('Error updating status'));
     }, 5000);
   </script>
-  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com | v%FW_VER%<br><a href="https://github.com/freseco/RadarFlightsESP32" target="_blank" style="color: #888; text-decoration: none; display: inline-block; margin-top: 5px;" title="View on GitHub"><svg height="24" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg></a></div>
+  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com | v%FW_VER% | Compilación: %BUILD_DATE%<br><a href="https://github.com/freseco/RadarFlightsESP32" target="_blank" style="color: #888; text-decoration: none; display: inline-block; margin-top: 5px;" title="View on GitHub"><svg height="24" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg></a></div>
 </body>
 </html>
 )=====";
@@ -520,10 +520,31 @@ const char* otaHtml = R"=====(
       xhr.send(formData);
     });
   </script>
-  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com<br><a href="https://github.com/freseco/RadarFlightsESP32" target="_blank" style="color: #888; text-decoration: none; display: inline-block; margin-top: 5px;" title="View on GitHub"><svg height="24" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg></a></div>
+  <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #555;">Autor: freseco@gmail.com | v%FW_VER% | Compilación: %BUILD_DATE%<br><a href="https://github.com/freseco/RadarFlightsESP32" target="_blank" style="color: #888; text-decoration: none; display: inline-block; margin-top: 5px;" title="View on GitHub"><svg height="24" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg></a></div>
 </body>
 </html>
 )=====";
+
+static String getBuildDateTime() {
+  const char* dateStr = __DATE__; // "Mmm dd yyyy"
+  const char* timeStr = __TIME__; // "hh:mm:ss"
+  const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+  int month = 0;
+  for (int i = 0; i < 12; i++) {
+    if (strncmp(dateStr, months[i], 3) == 0) {
+      month = i + 1;
+      break;
+    }
+  }
+  if (month > 0) {
+    int day = atoi(dateStr + 4);
+    int year = atoi(dateStr + 7);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%02d/%02d/%04d %s", day, month, year, timeStr);
+    return String(buf);
+  }
+  return String(dateStr) + " " + String(timeStr);
+}
 
 void handleRoot() {
   String html = htmlForm;
@@ -640,6 +661,7 @@ void handleRoot() {
   html.replace("%CPERIOD_1Y%", pref_crypto_period == "1y" ? "selected" : "");
   
   html.replace("%FW_VER%", FIRMWARE_VERSION);
+  html.replace("%BUILD_DATE%", getBuildDateTime());
   
   html.replace("%SCREEN_TIME%", String(pref_screen_time_s));
   html.replace("%RADAR_TIME%", String(pref_radar_time_s));
@@ -899,6 +921,8 @@ void setupWebServer() {
   server.on("/update_page", HTTP_GET, []() {
     String otaStr = otaHtml;
     otaStr.replace("%LANG%", pref_lang);
+    otaStr.replace("%FW_VER%", FIRMWARE_VERSION);
+    otaStr.replace("%BUILD_DATE%", getBuildDateTime());
     server.send(200, "text/html; charset=utf-8", otaStr);
   });
   
